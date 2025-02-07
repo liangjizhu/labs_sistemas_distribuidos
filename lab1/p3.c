@@ -1,14 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void ObtenerMinMax(int *array, int size, int *min, int *max) {
-    if (size <= 0) return;
+void ObtenerMinMax(int argc, char *argv[], int *min, int *max) {
+    char *end;
+    int num = strtol(argv[1], &end, 10);
 
-    *min = *max = array[0];
+    if (*end != '\0') {
+        printf("Error de conversión en argumento 1: %s\n", argv[1]);
+        exit(1);
+    }
 
-    for (int i = 1; i < size; i++) {
-        if (array[i] < *min) *min = array[i];
-        if (array[i] > *max) *max = array[i];
+    *min = *max = num;
+
+    for (int i = 2; i < argc; i++) {
+        num = strtol(argv[i], &end, 10);
+        if (*end != '\0') {
+            printf("Error de conversión en argumento %d: %s\n", i, argv[i]);
+            exit(1);
+        }
+
+        if (num < *min) *min = num;
+        if (num > *max) *max = num;
     }
 }
 
@@ -18,28 +30,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int *numeros = malloc((argc - 1) * sizeof(int));
-    if (!numeros) {
-        printf("Error: No se pudo asignar memoria.\n");
-        return 1;
-    }
-
-    for (int i = 1; i < argc; i++) {
-        char *end;
-        numeros[i - 1] = strtol(argv[i], &end, 10);
-        if (*end != '\0') {
-            printf("Error de conversión en argumento %d: %s\n", i, argv[i]);
-            free(numeros);
-            return 1;
-        }
-    }
-
     int min, max;
-    ObtenerMinMax(numeros, argc - 1, &min, &max);
+    ObtenerMinMax(argc, argv, &min, &max);
 
     printf("Valor mínimo = %d\n", min);
     printf("Valor máximo = %d\n", max);
 
-    free(numeros);
     return 0;
 }
