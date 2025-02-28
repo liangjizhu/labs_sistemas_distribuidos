@@ -1,0 +1,8 @@
+# Ignore .vscode settings.json
+.vscode/settings.json
+
+# Other common ignore patterns
+*.log
+*.tmp
+*.swp
+node_modules/
