@@ -1,0 +1,1 @@
+/* gestiona el almacenamiento y procesamiento de las tuplas*/
