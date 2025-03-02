@@ -50,3 +50,30 @@ int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coor
 
     return -1;  // Error: lista llena
 }
+
+int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coord *value3) {
+    for (int i = 0; i < num_tuplas; i++) {
+        if (tuplas[i].key == key) {
+            strncpy(value1, tuplas[i].value1, 255);
+            *N_value2 = tuplas[i].N_value2;
+            memcpy(V_value2, tuplas[i].V_value2, sizeof(double) * tuplas[i].N_value2);
+            *value3 = tuplas[i].value3;
+            return 0;  // Éxito
+        }
+    }
+    return -1;  // Error: clave no encontrada
+}
+
+int modify_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3) {
+    for (int i = 0; i < num_tuplas; i++) {
+        if (tuplas[i].key == key) {
+            strncpy(tuplas[i].value1, value1, 255);
+            tuplas[i].N_value2 = N_value2;
+            memcpy(tuplas[i].V_value2, V_value2, sizeof(double) * N_value2);
+            tuplas[i].value3 = value3;
+            return 0;
+        }
+    }
+    return -1;
+}
+
