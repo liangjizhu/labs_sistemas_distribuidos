@@ -19,6 +19,8 @@ typedef struct {
 static Tupla tuplas[MAX_TUPLAS];
 static int num_tuplas = 0;
 
+mqd_t mq_cliente, mq_servidor;
+
 
 int destroy() {
     num_tuplas = 0;
@@ -76,4 +78,52 @@ int modify_value(int key, char *value1, int N_value2, double *V_value2, struct C
     }
     return -1;
 }
+
+int delete_key(int key) {
+    for (int i = 0; i < num_tuplas; i++) {
+        if (tuplas[i].key == key) {
+            // Hay que borras la tupla desplazando los otros 
+            for (int j = i; j < num_tuplas - 1; j++) {
+                tuplas[j] = tuplas[j + 1];
+            }
+            num_tuplas--;
+            return 0;  
+        }
+    }
+    return -1;  // clave no encontrada
+}
+
+
+int exist(int key) {
+    for (int i = 0; i < num_tuplas; i++) {
+        if (tuplas[i].key == key) {
+            return 1;  // Existe :)
+        }
+    }
+    return 0;  // No existe :(
+}
+
+int init_queues() {
+    struct mq_attr attr;
+    attr.mq_flags = 0;
+    attr.mq_maxmsg = 10;
+    attr.mq_msgsize = sizeof(int);
+    attr.mq_curmsgs = 0;
+
+    mq_cliente = mq_open("/mq_cliente", O_CREAT | O_RDONLY, 0644, &attr);
+    if (mq_cliente == (mqd_t) -1) {
+        perror("Error al abrir la cola de cliente");
+        return -1;
+    }
+
+    mq_servidor = mq_open("/mq_servidor", O_CREAT | O_WRONLY, 0644, &attr);
+    if (mq_servidor == (mqd_t) -1) {
+        perror("Error al abrir la cola del servidor");
+        return -1;
+    }
+
+    return 0;  // Éxito
+}
+
+
 
