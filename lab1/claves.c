@@ -19,7 +19,9 @@ typedef struct {
 static Tupla tuplas[MAX_TUPLAS];
 static int num_tuplas = 0;
 
-mqd_t mq_cliente, mq_servidor;
+extern mqd_t mq_cliente;
+extern mqd_t mq_servidor;
+
 
 
 int destroy() {
@@ -102,28 +104,3 @@ int exist(int key) {
     }
     return 0;  // No existe :(
 }
-
-int init_queues() {
-    struct mq_attr attr;
-    attr.mq_flags = 0;
-    attr.mq_maxmsg = 10;
-    attr.mq_msgsize = sizeof(int);
-    attr.mq_curmsgs = 0;
-
-    mq_cliente = mq_open("/mq_cliente", O_CREAT | O_RDONLY, 0644, &attr);
-    if (mq_cliente == (mqd_t) -1) {
-        perror("Error al abrir la cola de cliente");
-        return -1;
-    }
-
-    mq_servidor = mq_open("/mq_servidor", O_CREAT | O_WRONLY, 0644, &attr);
-    if (mq_servidor == (mqd_t) -1) {
-        perror("Error al abrir la cola del servidor");
-        return -1;
-    }
-
-    return 0;  // Éxito
-}
-
-
-
