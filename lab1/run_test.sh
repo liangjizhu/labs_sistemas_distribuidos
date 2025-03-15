@@ -1,5 +1,5 @@
 #!/bin/bash
-# run_test.sh - Script para probar el servicio distribuido con múltiples clientes
+# run_test.sh - Script para probar el servicio distribuido con múltiples clientes concurrentemente
 
 echo "Limpiando compilación previa..."
 make clean
@@ -25,13 +25,19 @@ sleep 2
 
 # Array de nombres de clientes
 CLIENTS=("app-cliente1" "app-cliente2" "app-cliente3" "app-cliente4" "app-cliente5" "app-cliente6")
+CLIENT_PIDS=()
 
-# Ejecutar cada cliente secuencialmente
+# Ejecutar todos los clientes concurrentemente y almacenar sus PIDs
+echo "Ejecutando clientes concurrentemente..."
 for client in "${CLIENTS[@]}"; do
-    echo "Ejecutando $client..."
-    ./$client
-    echo "----------------------------------"
-    sleep 1
+    echo "Lanzando $client..."
+    ./$client &
+    CLIENT_PIDS+=($!)
+done
+
+# Esperar a que todos los clientes finalicen
+for pid in "${CLIENT_PIDS[@]}"; do
+    wait $pid
 done
 
 # Finalizar el servidor

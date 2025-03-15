@@ -10,7 +10,7 @@ int main(void) {
     
     int err = get_value(key, buffer, &n, v2, &v3);
     if (err == 0) {
-        printf("app-cliente_get: Tupla recuperada:\n");
+        printf("app-cliente2: Tupla recuperada:\n");
         printf("  value1: %s\n", buffer);
         printf("  N_value2: %d\n", n);
         printf("  v2: ");
@@ -19,9 +19,9 @@ int main(void) {
         }
         printf("\n  Coord: (%d, %d)\n", v3.x, v3.y);
     } else if (err == -1) {
-        printf("app-cliente_get: Error al obtener la tupla (clave no encontrada)\n");
+        printf("app-cliente2: Error al obtener la tupla (clave no encontrada)\n");
     } else {
-        printf("app-cliente_get: Error en la comunicación\n");
+        printf("app-cliente2: Error en la comunicación\n");
     }
     return 0;
 }

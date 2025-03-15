@@ -1,6 +1,6 @@
-/* Servidor encargado de las comunicaciones con la parte cliente
- * Debe de ser concurrente
- * Recibe las peticiones del cliente e invoca las funciones en claves.c
+/* Servidor-mq.c
+ * Servidor encargado de las comunicaciones con la parte cliente.
+ * Debe ser concurrente y procesar las peticiones invocando las funciones de claves.c.
  */
 
 #include <mqueue.h>
@@ -14,7 +14,7 @@
 mqd_t mq_cliente, mq_servidor;
 
 struct Request {
-    int op_type; // tipo de operacion
+    int op_type; // tipo de operación
     int key;
     char value1[256];
     int N_value2;
@@ -22,15 +22,22 @@ struct Request {
     struct Coord value3;
 };
 
-// Iniciar colas
+// Nueva estructura para la respuesta completa de get_value
+struct Response {
+    int result;
+    char value1[256];
+    int N_value2;
+    double V_value2[32];
+    struct Coord value3;
+};
+
 int init_queues() {
     struct mq_attr attr_req, attr_resp;
 
-    // Eliminar colas existentes (si las hay)
     mq_unlink("/mq_cliente");
     mq_unlink("/mq_servidor");
 
-    // Configuración para la cola de peticiones (Request)
+    // Cola de peticiones (Request)
     attr_req.mq_flags = 0;
     attr_req.mq_maxmsg = 10;
     attr_req.mq_msgsize = sizeof(struct Request);
@@ -41,10 +48,12 @@ int init_queues() {
         return -1;
     }
 
-    // Configuración para la cola de respuestas (int)
+    // Cola de respuestas: para operaciones get_value enviaremos struct Response,
+    // para las demás un int. Como máximo se envía el mayor tamaño de ambos:
+    int max_size = (sizeof(struct Response) > sizeof(int)) ? sizeof(struct Response) : sizeof(int);
     attr_resp.mq_flags = 0;
     attr_resp.mq_maxmsg = 10;
-    attr_resp.mq_msgsize = sizeof(int);
+    attr_resp.mq_msgsize = max_size;
     attr_resp.mq_curmsgs = 0;
     mq_servidor = mq_open("/mq_servidor", O_CREAT | O_WRONLY, 0644, &attr_resp);
     if (mq_servidor == (mqd_t) -1) {
@@ -52,53 +61,64 @@ int init_queues() {
         return -1;
     }
 
-    return 0;  // Éxito
+    return 0;
 }
 
-
-
-
-
 void* conc_clientes(void* arg) {
-    // Utilizar el mensaje ya recibido que se pasa como argumento
     struct Request *request = (struct Request*) arg;
-
     printf("Mensaje recibido: operation: %d, key: %d\n", request->op_type, request->key);
 
     int result = -1;
-    switch(request->op_type) {
-        case 1:
-            result = set_value(request->key, request->value1, request->N_value2, request->V_value2, request->value3);
-            break;
-        case 2:
-            result = get_value(request->key, request->value1, &request->N_value2, request->V_value2, &request->value3);
-            break;
-        case 3:
-            result = modify_value(request->key, request->value1, request->N_value2, request->V_value2, request->value3);
-            break;
-        case 4:
-            result = exist(request->key);
-            break;
-        case 5:
-            result = delete_key(request->key);
-            break;
-        case 6:
-            result = destroy();
-            break;
-        default:
-            printf("Operación desconocida\n");
-            break;
+    if (request->op_type != 2) {
+        // Para operaciones que solo requieren enviar un entero de respuesta
+        switch(request->op_type) {
+            case 1:
+                result = set_value(request->key, request->value1, request->N_value2, request->V_value2, request->value3);
+                break;
+            case 3:
+                result = modify_value(request->key, request->value1, request->N_value2, request->V_value2, request->value3);
+                break;
+            case 4:
+                result = exist(request->key);
+                break;
+            case 5:
+                result = delete_key(request->key);
+                break;
+            case 6:
+                result = destroy();
+                break;
+            default:
+                printf("Operación desconocida\n");
+                break;
+        }
+        // Enviar respuesta (int)
+        if (mq_send(mq_servidor, (char*)&result, sizeof(int), 0) == -1) {
+            perror("Error sending response to client");
+        }
+    } else {
+        // Caso get_value: preparamos una respuesta completa
+        char tmp_value1[256];
+        int tmp_N;
+        double tmp_V[32];
+        struct Coord tmp_coord;
+        result = get_value(request->key, tmp_value1, &tmp_N, tmp_V, &tmp_coord);
+
+        struct Response resp;
+        resp.result = result;
+        if (result == 0) {
+            strncpy(resp.value1, tmp_value1, 256);
+            resp.N_value2 = tmp_N;
+            memcpy(resp.V_value2, tmp_V, sizeof(double)*tmp_N);
+            resp.value3 = tmp_coord;
+        }
+        if (mq_send(mq_servidor, (char*)&resp, sizeof(struct Response), 0) == -1) {
+            perror("Error sending response (get_value) to client");
+        }
     }
 
-    // Enviar la respuesta al cliente
-    if (mq_send(mq_servidor, (char*)&result, sizeof(int), 0) == -1) {
-        perror("Error sending response to client");
-    }
-
-    free(request); // Liberar la memoria asignada en main
+    free(request);
     return NULL;
 }
-
 
 int main() {
     if (init_queues() == -1) {
@@ -109,13 +129,11 @@ int main() {
 
     while (1) {
         struct Request request;
-        // Esperar de forma bloqueante a que llegue un mensaje
         if (mq_receive(mq_cliente, (char*)&request, sizeof(struct Request), NULL) == -1) {
             perror("Error recibiendo mensaje de cliente");
             continue;
         }
 
-        // Crear un bloque de memoria para almacenar la petición
         struct Request *req_ptr = malloc(sizeof(struct Request));
         if (!req_ptr) {
             perror("Error al asignar memoria para la petición");
@@ -139,3 +157,4 @@ int main() {
 
     return 0;
 }
+ 

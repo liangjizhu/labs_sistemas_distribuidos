@@ -9,11 +9,11 @@ int main(void) {
 
     int err = set_value(key, v1, 3, v2, v3);
     if (err == 0) {
-        printf("app-cliente_set: Tupla insertada correctamente (key=%d)\n", key);
+        printf("app-cliente1: Tupla insertada correctamente (key=%d)\n", key);
     } else if (err == -1) {
-        printf("app-cliente_set: Error al insertar la tupla (error de aplicación)\n");
+        printf("app-cliente1: Error al insertar la tupla (error de aplicación)\n");
     } else {
-        printf("app-cliente_set: Error en la comunicación\n");
+        printf("app-cliente1: Error en la comunicación\n");
     }
     return 0;
 }

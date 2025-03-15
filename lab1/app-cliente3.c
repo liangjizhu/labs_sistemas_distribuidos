@@ -10,10 +10,10 @@ int main(void) {
     // Insertar la tupla inicial
     int err = set_value(key, v1, 2, v2, v3);
     if (err != 0) {
-        printf("app-cliente_modify: Error al insertar la tupla inicial\n");
+        printf("app-cliente3: Error al insertar la tupla inicial\n");
         return 1;
     }
-    printf("app-cliente_modify: Tupla inicial insertada.\n");
+    printf("app-cliente3: Tupla inicial insertada.\n");
 
     // Modificar la tupla
     char *new_v1 = "Modified Value";
@@ -21,11 +21,11 @@ int main(void) {
     struct Coord new_v3 = {35, 45};
     err = modify_value(key, new_v1, 3, new_v2, new_v3);
     if (err == 0) {
-        printf("app-cliente_modify: Tupla modificada correctamente.\n");
+        printf("app-cliente3: Tupla modificada correctamente.\n");
     } else if (err == -1) {
-        printf("app-cliente_modify: Error al modificar la tupla\n");
+        printf("app-cliente3: Error al modificar la tupla\n");
     } else {
-        printf("app-cliente_modify: Error en la comunicación\n");
+        printf("app-cliente3: Error en la comunicación\n");
     }
     return 0;
 }

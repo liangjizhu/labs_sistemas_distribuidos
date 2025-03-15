@@ -10,19 +10,19 @@ int main(void) {
     // Insertar la tupla
     int err = set_value(key, v1, 2, v2, v3);
     if (err != 0) {
-        printf("app-cliente_delete: Error al insertar la tupla\n");
+        printf("app-cliente4: Error al insertar la tupla\n");
         return 1;
     }
-    printf("app-cliente_delete: Tupla insertada.\n");
+    printf("app-cliente4: Tupla insertada.\n");
 
     // Eliminar la tupla
     err = delete_key(key);
     if (err == 0) {
-        printf("app-cliente_delete: Tupla borrada correctamente.\n");
+        printf("app-cliente4: Tupla borrada correctamente.\n");
     } else if (err == -1) {
-        printf("app-cliente_delete: Error al borrar la tupla (clave no encontrada)\n");
+        printf("app-cliente4: Error al borrar la tupla (clave no encontrada)\n");
     } else {
-        printf("app-cliente_delete: Error en la comunicación\n");
+        printf("app-cliente4: Error en la comunicación\n");
     }
     return 0;
 }

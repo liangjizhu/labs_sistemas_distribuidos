@@ -10,19 +10,19 @@ int main(void) {
     // Insertar la tupla
     int err = set_value(key, v1, 2, v2, v3);
     if (err != 0) {
-        printf("app-cliente_exist: Error al insertar la tupla\n");
+        printf("app-cliente5: Error al insertar la tupla\n");
         return 1;
     }
-    printf("app-cliente_exist: Tupla insertada.\n");
+    printf("app-cliente5: Tupla insertada.\n");
 
     // Comprobar existencia
     int exists = exist(key);
     if (exists == 1) {
-        printf("app-cliente_exist: La clave %d existe.\n", key);
+        printf("app-cliente5: La clave %d existe.\n", key);
     } else if (exists == 0) {
-        printf("app-cliente_exist: La clave %d no existe.\n", key);
+        printf("app-cliente5: La clave %d no existe.\n", key);
     } else {
-        printf("app-cliente_exist: Error en la comunicación\n");
+        printf("app-cliente5: Error en la comunicación\n");
     }
     return 0;
 }
