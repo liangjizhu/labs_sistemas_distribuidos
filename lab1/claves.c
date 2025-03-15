@@ -11,13 +11,13 @@ typedef struct {
     int key;
     char value1[256];
     int N_value2;
-    int V_value2[32];
+    double V_value2[32];
     struct Coord value3;
 }Tupla;
 
 #define MAX_TUPLAS 100
-static Tupla tuplas[MAX_TUPLAS];
-static int num_tuplas = 0;
+Tupla tuplas[MAX_TUPLAS];
+int num_tuplas = 0;
 
 extern mqd_t mq_cliente;
 extern mqd_t mq_servidor;
