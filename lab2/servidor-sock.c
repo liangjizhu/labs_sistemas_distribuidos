@@ -7,6 +7,11 @@
 #include "claves.h"
 
 #define OP_SET_VALUE 1
+#define OP_GET_VALUE 2
+#define OP_MODIFY_VALUE 3
+#define OP_EXIST 4
+#define OP_DELETE_KEY 5
+#define OP_DESTROY 6
 
 
 char *recv_string(int sc) {
@@ -47,6 +52,7 @@ int main(int argc, char *argv []) {
     server_addr.sin_addr.s_addr = INADDR_ANY;
     server_addr.sin_port = htons(4200);
 
+    // bind() -> vincular el socket con la dirección y puerto configurados
     err = bind(sd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
 
     if (err == -1) {
@@ -54,7 +60,8 @@ int main(int argc, char *argv []) {
 		return -1;
 	}
 
-    	err = listen(sd, SOMAXCONN);
+    // listen() -> para poner al servidor a la espera de conexiones
+    err = listen(sd, SOMAXCONN);
 	if (err == -1) {
 		printf("Error en listen\n");
 		return -1;
@@ -118,8 +125,10 @@ int main(int argc, char *argv []) {
             value3.y = ntohl(y_net);
         
             // 6. Llamar la función
-            if (set_value(key, value1, N_value2, V_value2, value3) == 0)
+            if (set_value(key, value1, N_value2, V_value2, value3) == 0) {
                 status = 0;
+            }
+        
         
         end:
             send(sc, &status, sizeof(char), 0);
@@ -127,6 +136,79 @@ int main(int argc, char *argv []) {
             free(V_value2);
             close(sc);
             continue;
+        }
+
+        if (op_code == OP_GET_VALUE) {
+            int32_t key_net;
+            if (recv(sc, &key_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv key");
+                close(sc);
+                continue;
+            }
+            int key = ntohl(key_net);
+        
+            // Llamar a la función get_value para obtener la tupla
+            char value1[256];
+            int N_value2;
+            double V_value2[32];
+            struct Coord value3;
+            int res = get_value(key, value1, &N_value2, V_value2, &value3);
+        
+            // Enviar status: 0 si get_value fue exitoso, 1 si error
+            char status = (res == 0) ? 0 : 1;
+            if (send(sc, &status, sizeof(char), 0) < 0) {
+                perror("send status");
+                close(sc);
+                continue;
+            }
+        
+            if (res == 0) {
+                // Enviar longitud de value1
+                int32_t len = strlen(value1);
+                int32_t len_net = htonl(len);
+                if (send(sc, &len_net, sizeof(int32_t), 0) < 0) {
+                    perror("send value1 length");
+                    close(sc);
+                    continue;
+                }
+                // Enviar la cadena value1
+                if (send(sc, value1, len, 0) < 0) {
+                    perror("send value1");
+                    close(sc);
+                    continue;
+                }
+                // Enviar N_value2
+                int32_t n_net = htonl(N_value2);
+                if (send(sc, &n_net, sizeof(int32_t), 0) < 0) {
+                    perror("send N_value2");
+                    close(sc);
+                    continue;
+                }
+                // Enviar cada elemento del vector V_value2
+                for (int i = 0; i < N_value2; i++) {
+                    uint64_t d;
+                    memcpy(&d, &V_value2[i], sizeof(double));
+                    d = htobe64(d);
+                    if (send(sc, &d, sizeof(uint64_t), 0) < 0) {
+                        perror("send V_value2 element");
+                        close(sc);
+                        continue;
+                    }
+                }
+                // Enviar las coordenadas
+                int32_t x_net = htonl(value3.x);
+                int32_t y_net = htonl(value3.y);
+                if (send(sc, &x_net, sizeof(int32_t), 0) < 0 ||
+                    send(sc, &y_net, sizeof(int32_t), 0) < 0) {
+                    perror("send value3");
+                    close(sc);
+                    continue;
+                }
+            }
+        }
+
+        if (op_code == OP_MODIFY_VALUE) {
+            
         }
         close(sc);
     }
