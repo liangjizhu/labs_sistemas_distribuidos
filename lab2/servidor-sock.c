@@ -208,7 +208,143 @@ int main(int argc, char *argv []) {
         }
 
         if (op_code == OP_MODIFY_VALUE) {
-            
+            int32_t key_net;
+            if (recv(sc, &key_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv key");
+                close(sc);
+                continue;
+            }
+            int key = ntohl(key_net);
+        
+            // 1. Recibir value1: primero la longitud (int32_t) y luego la cadena
+            int32_t len_net;
+            if (recv(sc, &len_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv value1 length");
+                close(sc);
+                continue;
+            }
+            int len = ntohl(len_net);
+            char *value1 = malloc(len + 1);
+            if (!value1) {
+                perror("malloc value1");
+                close(sc);
+                continue;
+            }
+            if (recv(sc, value1, len, MSG_WAITALL) <= 0) {
+                perror("recv value1");
+                free(value1);
+                close(sc);
+                continue;
+            }
+            value1[len] = '\0';
+        
+            // 2. Recibir N_value2 (int32_t)
+            int32_t nval_net;
+            if (recv(sc, &nval_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv N_value2");
+                free(value1);
+                close(sc);
+                continue;
+            }
+            int N_value2 = ntohl(nval_net);
+        
+            // 3. Recibir el vector V_value2 (cada elemento se envía como un uint64_t en orden de red)
+            double *V_value2 = malloc(sizeof(double) * N_value2);
+            if (!V_value2) {
+                perror("malloc V_value2");
+                free(value1);
+                close(sc);
+                continue;
+            }
+            for (int i = 0; i < N_value2; i++) {
+                uint64_t d_net;
+                if (recv(sc, &d_net, sizeof(uint64_t), MSG_WAITALL) <= 0) {
+                    perror("recv V_value2 element");
+                    free(value1);
+                    free(V_value2);
+                    close(sc);
+                    continue;
+                }
+                uint64_t d_host = be64toh(d_net);
+                memcpy(&V_value2[i], &d_host, sizeof(double));
+            }
+        
+            // 4. Recibir value3: dos int32_t (x e y)
+            int32_t x_net, y_net;
+            if (recv(sc, &x_net, sizeof(int32_t), MSG_WAITALL) <= 0 ||
+                recv(sc, &y_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv value3");
+                free(value1);
+                free(V_value2);
+                close(sc);
+                continue;
+            }
+            struct Coord value3;
+            value3.x = ntohl(x_net);
+            value3.y = ntohl(y_net);
+        
+            // Llamar a modify_value (implementada en claves.c)
+            int res = modify_value(key, value1, N_value2, V_value2, value3);
+        
+            // Enviar respuesta al cliente: 0 para éxito, 1 para error
+            char status = (res == 0) ? 0 : 1;
+            if (send(sc, &status, sizeof(char), 0) < 0) {
+                perror("send status");
+            }
+        
+            free(value1);
+            free(V_value2);
+            close(sc);
+            continue;
+        }
+
+        if (op_code == OP_EXIST) {
+            int32_t key_net;
+            if (recv(sc, &key_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv key");
+                close(sc);
+                continue;
+            }
+            int key = ntohl(key_net);
+            int res = exist(key);
+        
+            // Enviar status: enviar directamente el valor devuelto por exist
+            char status = (char) res;
+            if (send(sc, &status, sizeof(char), 0) < 0) {
+                perror("send status");
+                close(sc);
+                continue;
+            }
+        }
+
+        if (op_code == OP_DELETE_KEY) {
+            int32_t key_net;
+            if (recv(sc, &key_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
+                perror("recv key");
+                close(sc);
+                continue;
+            }
+            int key = ntohl(key_net);
+            int res = delete_key(key);
+
+            // Enviar status: 0 si la eliminación fue exitosa, -1 en caso de error.
+            char status = (res == 0) ? 0 : -1;
+            if (send(sc, &status, sizeof(char), 0) < 0) {
+                perror("send status");
+                close(sc);
+                continue;
+            }
+        }
+
+        if (op_code == OP_DESTROY) {
+            int res = destroy();
+            // Enviar status: 0 si se destruyeron las tuplas correctamente, -1 en caso de error.
+            char status = (res == 0) ? 0 : -1;
+            if (send(sc, &status, sizeof(char), 0) < 0) {
+                perror("send status");
+                close(sc);
+                continue;
+            }
         }
         close(sc);
     }
