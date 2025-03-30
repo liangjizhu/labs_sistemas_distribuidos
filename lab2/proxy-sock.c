@@ -7,7 +7,7 @@
 
 #define OP_SET_VALUE 1
 #define OP_GET_VALUE 2
-#define OP_MODIGY_VALUE 3
+#define OP_MODIFY_VALUE 3
 #define OP_EXIST 4
 #define OP_DELETE_KEY 5
 #define OP_DESTROY 6
@@ -58,8 +58,13 @@ int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coor
         return -1;
     }
 
+    // Enviar op_code para SET
     char op_code = OP_SET_VALUE;
-    send(sd, &op_code, sizeof(char), 0);
+    if (send(sd, &op_code, sizeof(char), 0) < 0) {
+        perror("send op_code");
+        close(sd);
+        return -1;
+    }
 
     // 1. Enviar key (int32_t en orden de red)
     int32_t key_net = htonl(key);
@@ -177,10 +182,10 @@ int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coo
         close(sd);
         return -1;
     }
-    value1[len] = '\0';  // Asegurarse de terminar la cadena
+    value1[len] = '\0';
 
     // 3. Recibir N_value2 (int32_t)
-    int32_t nval2_net = htonl(N_value2);
+    int32_t nval2_net;
     if (recv(sd, &nval2_net, sizeof(int32_t), MSG_WAITALL) <= 0) {
         perror("receive N_value2");
         close(sd);
@@ -217,4 +222,181 @@ int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coo
 
     close(sd);
     return 0;
+}
+
+int modify_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3) {
+    int sd = connect_to_server();
+    if (sd < 0) {
+        return -1;
+    }
+
+    // Enviar op_code para MODIFY
+    char op_code = OP_MODIFY_VALUE;
+    if (send(sd, &op_code, sizeof(char), 0) < 0) {
+        perror("send op_code");
+        close(sd);
+        return -1;
+    }
+
+    // 1. Enviar key (int32_t en orden de red)
+    int32_t key_net = htonl(key);
+    if (send(sd, &key_net, sizeof(int32_t), 0) < 0) {
+        perror("send key");
+        close(sd);
+        return -1;
+    }
+
+    // 2. Enviar value1: primero la longitud (int32_t), luego la cadena
+    int32_t len = strlen(value1);
+    int32_t len_net = htonl(len);
+    if (send(sd, &len_net, sizeof(int32_t), 0) < 0) {
+        perror("send value1 length");
+        close(sd);
+        return -1;
+    }
+    if (send(sd, value1, len, 0) < 0) {
+        perror("send value1");
+        close(sd);
+        return -1;
+    }
+
+    // 3. Enviar N_value2 (int32_t)
+    int32_t nval2_net = htonl(N_value2);
+    if (send(sd, &nval2_net, sizeof(int32_t), 0) < 0) {
+        perror("send N_value2");
+        close(sd);
+        return -1;
+    }
+
+    // 4. Enviar V_value2 (cada uno como un uint64_t convertido de double)
+    for (int i = 0; i < N_value2; i++) {
+        uint64_t val_net;
+        memcpy(&val_net, &V_value2[i], sizeof(double));
+        val_net = htobe64(val_net);
+        if (send(sd, &val_net, sizeof(uint64_t), 0) < 0) {
+            perror("send V_value2 element");
+            close(sd);
+            return -1;
+        }
+    }
+
+    // 5. Enviar value3: enviar x y y (cada uno como int32_t)
+    int32_t x_net = htonl(value3.x);
+    int32_t y_net = htonl(value3.y);
+    if (send(sd, &x_net, sizeof(int32_t), 0) < 0) {
+        perror("send value3.x");
+        close(sd);
+        return -1;
+    }
+    if (send(sd, &y_net, sizeof(int32_t), 0) < 0) {
+        perror("send value3.y");
+        close(sd);
+        return -1;
+    }
+
+    // Recibir respuesta del servidor: se espera un status (char)
+    char status;
+    if (recv(sd, &status, sizeof(char), MSG_WAITALL) <= 0) {
+        fprintf(stderr, "Error al recibir la respuesta del servidor\n");
+        close(sd);
+        return -1;
+    }
+
+    close(sd);
+    return (status == 0) ? 0 : -1;
+}
+
+int exist(int key) {
+    int sd = connect_to_server();
+    if (sd < 0) {
+        return -1;
+    }
+
+    // Enviar op_code para EXIST
+    char op_code = OP_EXIST;
+    if (send(sd, &op_code, sizeof(char), 0) < 0) {
+        perror("send op_code");
+        close(sd);
+        return -1;
+    }
+
+    // 1. Enviar key (int32_t en orden de red)
+    int32_t key_net = htonl(key);
+    if (send(sd, &key_net, sizeof(int32_t), 0) < 0) {
+        perror("send key");
+        close(sd);
+        return -1;
+    }
+
+    // Recibir respuesta del servidor: se espera un status (0 o 1)
+    char status;
+    if (recv(sd, &status, sizeof(char), MSG_WAITALL) <= 0) {
+        fprintf(stderr, "Error al recibir la respuesta del servidor\n");
+        close(sd);
+        return -1;
+    }
+
+    close(sd);
+    // Envía 1 si existe y 0 si no
+    return (int) status;
+}
+
+int delete_key(int key) {
+    int sd = connect_to_server();
+    if (sd < 0) {
+        return -1;
+    }
+
+    // Enviar op_code para DELETE
+    char op_code = OP_DELETE_KEY;
+    if (send(sd, &op_code, sizeof(char), 0) < 0) {
+        perror("send op_code");
+        close(sd);
+        return -1;
+    }
+
+    // 1. Enviar key (int32_t en orden de red)
+    int32_t key_net = htonl(key);
+    if (send(sd, &key_net, sizeof(int32_t), 0) < 0) {
+        perror("send key");
+        close(sd);
+        return -1;
+    }
+
+    // Recibir respuesta del servidor: se espera un status (0 o 1)
+    char status;
+    if (recv(sd, &status, sizeof(char), MSG_WAITALL) <= 0) {
+        fprintf(stderr, "Error al recibir la respuesta del servidor\n");
+        close(sd);
+        return -1;
+    }
+
+    close(sd);
+    return (status == 0) ? 0 : -1;
+}
+
+int destroy(void) {
+    int sd = connect_to_server();
+    if (sd < 0) {
+        return -1;
+    }
+
+    // Enviar op_code para DESTROY
+    char op_code = OP_DESTROY;
+    if (send(sd, &op_code, sizeof(char), 0) < 0) {
+        perror("send op_code");
+        close(sd);
+        return -1;
+    }
+
+    // Recibir respuesta del servidor: se espera un status (0 o 1)
+    char status;
+    if (recv(sd, &status, sizeof(char), MSG_WAITALL) <= 0) {
+        fprintf(stderr, "Error al recibir la respuesta del servidor\n");
+        close(sd);
+        return -1;
+    }
+
+    close(sd);
+    return (status == 0) ? 0 : -1;
 }
