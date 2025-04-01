@@ -2,30 +2,27 @@
 #include "claves.h"
 
 int main(void) {
-    int key = 200;
-    char *v1 = "Original Value";
-    double v2[] = {4.44, 5.55};
-    struct Coord v3 = {15, 25};
+    const int total_mods = 100;
 
-    // Insertar la tupla inicial
-    int err = set_value(key, v1, 2, v2, v3);
-    if (err != 0) {
-        printf("app-cliente3: Error al insertar la tupla inicial\n");
-        return 1;
-    }
-    printf("app-cliente3: Tupla inicial insertada.\n");
+    for (int i = 0; i < total_mods; i++) {
+        int key = 100 + i;  // Claves metidas por appcliente1 :0
 
-    // Modificar la tupla
-    char *new_v1 = "Modified Value";
-    double new_v2[] = {6.66, 7.77, 8.88};
-    struct Coord new_v3 = {35, 45};
-    err = modify_value(key, new_v1, 3, new_v2, new_v3);
-    if (err == 0) {
-        printf("app-cliente3: Tupla modificada correctamente.\n");
-    } else if (err == -1) {
-        printf("app-cliente3: Error al modificar la tupla\n");
-    } else {
-        printf("app-cliente3: Error en la comunicación\n");
+        char new_value1[64];
+        snprintf(new_value1, sizeof(new_value1), "Modified_User_%d", i);
+
+        double new_v2[] = {9.99 + i, 8.88 + i, 7.77 + i};
+        struct Coord new_coord = {100 + i, 200 + i};
+
+        int err = modify_value(key, new_value1, 3, new_v2, new_coord);
+        if (err == 0) {
+            printf("Tupla modificada: key=%d, value1=%s, Coord=(%d,%d))\n",
+                   key, new_value1, new_coord.x, new_coord.y);
+        } else if (err == -1) {
+            printf("app-cliente3: Error al modificar la tupla (key=%d)\n", key);
+        } else {
+            printf("app-cliente3: Error en la comunicación (key=%d)\n", key);
+        }
     }
+
     return 0;
 }

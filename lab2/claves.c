@@ -15,9 +15,9 @@ typedef struct {
     struct Coord value3;
 }Tupla;
 
-#define MAX_TUPLAS 100
-Tupla tuplas[MAX_TUPLAS];
+Tupla *tuplas = NULL;
 int num_tuplas = 0;
+int capacidad = 0;
 
 extern mqd_t mq_cliente;
 extern mqd_t mq_servidor;
@@ -25,9 +25,14 @@ extern mqd_t mq_servidor;
 
 
 int destroy() {
+    free(tuplas);
+    tuplas = NULL;
     num_tuplas = 0;
+    capacidad = 0;
     return 0;
 }
+
+
 
 int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3) {
     if (strlen(value1) > 255 || N_value2 < 1 || N_value2 > 32) {
@@ -41,19 +46,28 @@ int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coor
         }
     }
 
-    // Insertar la nueva tupla
-    if (num_tuplas < MAX_TUPLAS) {
-        tuplas[num_tuplas].key = key;
-        strncpy(tuplas[num_tuplas].value1, value1, 255);
-        tuplas[num_tuplas].N_value2 = N_value2;
-        memcpy(tuplas[num_tuplas].V_value2, V_value2, sizeof(double) * N_value2);
-        tuplas[num_tuplas].value3 = value3;
-        num_tuplas++;
-        return 0;  // Éxito
+    // Redimensionar si es necesario
+    if (num_tuplas == capacidad) {
+        int nueva_capacidad = (capacidad == 0) ? 10 : capacidad * 2;
+        Tupla *nueva_memoria = realloc(tuplas, nueva_capacidad * sizeof(Tupla));
+        if (!nueva_memoria) {
+            return -1; // Error al reservar memoria
+        }
+        tuplas = nueva_memoria;
+        capacidad = nueva_capacidad;
     }
 
-    return -1;  // Error: lista llena
+    // Insertar la nueva tupla
+    tuplas[num_tuplas].key = key;
+    strncpy(tuplas[num_tuplas].value1, value1, 255);
+    tuplas[num_tuplas].value1[255] = '\0';  // Por seguridad
+    tuplas[num_tuplas].N_value2 = N_value2;
+    memcpy(tuplas[num_tuplas].V_value2, V_value2, sizeof(double) * N_value2);
+    tuplas[num_tuplas].value3 = value3;
+    num_tuplas++;
+    return 0;
 }
+
 
 int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coord *value3) {
     for (int i = 0; i < num_tuplas; i++) {

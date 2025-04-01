@@ -2,27 +2,20 @@
 #include "claves.h"
 
 int main(void) {
-    int key = 300;
-    char *v1 = "To be deleted";
-    double v2[] = {9.99, 8.88};
-    struct Coord v3 = {55, 65};
+    const int total_deletes = 100;
 
-    // Insertar la tupla
-    int err = set_value(key, v1, 2, v2, v3);
-    if (err != 0) {
-        printf("app-cliente4: Error al insertar la tupla\n");
-        return 1;
-    }
-    printf("app-cliente4: Tupla insertada.\n");
+    for (int i = 0; i < total_deletes; i++) {
+        int key = 100 + i;  // Debe existir previamente
 
-    // Eliminar la tupla
-    err = delete_key(key);
-    if (err == 0) {
-        printf("app-cliente4: Tupla borrada correctamente.\n");
-    } else if (err == -1) {
-        printf("app-cliente4: Error al borrar la tupla (clave no encontrada)\n");
-    } else {
-        printf("app-cliente4: Error en la comunicación\n");
+        int err = delete_key(key);
+        if (err == 0) {
+            printf("Tupla borrada (key=%d)\n", key);
+        } else if (err == -1) {
+            printf("app-cliente4: Tupla no encontrada (key=%d)\n", key);
+        } else {
+            printf("app-cliente4: Error en (key=%d)\n", key);
+        }
     }
+
     return 0;
 }
