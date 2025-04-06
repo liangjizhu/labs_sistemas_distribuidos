@@ -17,22 +17,22 @@ libclaves.so: proxy-sock.o
 
 # Compilación de los clientes, que se enlazan con libclaves.so
 app-cliente1: app-cliente1.o
-	$(CC) -o $@ app-cliente1.o -L. -lclaves $(LDFLAGS)
+	$(CC) -o $@ app-cliente1.o -L. -lclaves -Wl,-rpath=. $(LDFLAGS)
 
 app-cliente2: app-cliente2.o
-	$(CC) -o $@ app-cliente2.o -L. -lclaves $(LDFLAGS)
+	$(CC) -o $@ app-cliente2.o -L. -lclaves -Wl,-rpath=. $(LDFLAGS)
 
 app-cliente3: app-cliente3.o
-	$(CC) -o $@ app-cliente3.o -L. -lclaves $(LDFLAGS)
+	$(CC) -o $@ app-cliente3.o -L. -lclaves -Wl,-rpath=. $(LDFLAGS)
 
 app-cliente4: app-cliente4.o
-	$(CC) -o $@ app-cliente4.o -L. -lclaves $(LDFLAGS)
+	$(CC) -o $@ app-cliente4.o -L. -lclaves -Wl,-rpath=. $(LDFLAGS)
 
 app-cliente5: app-cliente5.o
-	$(CC) -o $@ app-cliente5.o -L. -lclaves $(LDFLAGS)
+	$(CC) -o $@ app-cliente5.o -L. -lclaves -Wl,-rpath=. $(LDFLAGS)
 
 app-cliente6: app-cliente6.o
-	$(CC) -o $@ app-cliente6.o -L. -lclaves $(LDFLAGS)
+	$(CC) -o $@ app-cliente6.o -L. -lclaves -Wl,-rpath=. $(LDFLAGS)
 
 # Reglas de compilación de archivos objeto
 servidor-sock.o: servidor-sock.c claves.h
