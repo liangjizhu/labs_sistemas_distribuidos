@@ -5,7 +5,7 @@ int main(void) {
     const int total_checks = 100;
 
     for (int i = 0; i < total_checks; i++) {
-        int key = 100 + i;
+        int key = 150 + i;
 
         int exists = exist(key);
         if (exists == 1) {

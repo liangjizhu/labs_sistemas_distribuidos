@@ -2,7 +2,7 @@
 #include "claves.h"
 
 int main(void) {
-    const int total_tuples = 1000;
+    const int total_tuples = 100;
 
     for (int i = 0; i < total_tuples; i++) {
         int key = 100 + i;

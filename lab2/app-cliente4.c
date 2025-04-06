@@ -5,7 +5,7 @@ int main(void) {
     const int total_deletes = 100;
 
     for (int i = 0; i < total_deletes; i++) {
-        int key = 100 + i;  // Debe existir previamente
+        int key = 400 + i;  // Debe existir previamente
 
         int err = delete_key(key);
         if (err == 0) {

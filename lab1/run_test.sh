@@ -6,6 +6,16 @@ make clean
 echo "Compilando el proyecto..."
 make
 
+echo "Matando instancias anteriores..."
+pkill servidor-sock
+pkill app-cliente1
+pkill app-cliente2
+pkill app-cliente3
+pkill app-cliente4
+pkill app-cliente5
+pkill app-cliente6
+
+
 if [ $? -ne 0 ]; then
     echo "Error en la compilación."
     exit 1
