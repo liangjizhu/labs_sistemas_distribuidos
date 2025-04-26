@@ -1,6 +1,6 @@
 # Ignore .vscode settings.json
 .vscode/settings.json
-
+.vscode
 # Other common ignore patterns
 *.log
 *.tmp
