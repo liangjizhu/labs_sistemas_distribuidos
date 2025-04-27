@@ -12,7 +12,7 @@ make clean all
 
 # 1) Levantar el servidor RPC
 echo "[8] Levantando servidor RPC..."
-./tuplas_server &
+./servidor &
 SERVER_PID=$!
 sleep 2
 echo "Servidor RPC en PID=$SERVER_PID listo."
@@ -38,7 +38,7 @@ for pid in "${pids[@]}"; do
   if wait "$pid"; then
     echo "   → Cliente PID $pid finalizó con éxito"
   else
-    echo "   ⚠️ Cliente PID $pid falló con código de salida $?"
+    echo "   Cliente PID $pid falló con código de salida $?"
   fi
 done
 set -e

@@ -9,7 +9,7 @@ int main(void) {
 
         int exists = exist(key);
         if (exists == 1) {
-            printf("La clave %d EXISTE ✅\n", key);
+            printf("La clave %d EXISTE\n", key);
         } else if (exists == 0) {
             printf("La clave %d NO EXISTE\n", key);
         } else {

@@ -31,18 +31,18 @@ $(GEN_SRCS): $(IDL)
 
 stubs: $(GEN_SRCS)
 
-# 2) Servidor RPC
+# 2) Servidor RPC (usa ahora servidor-rpc.c)
 tuplas_xdr.o: tuplas_xdr.c tuplas.h
 	$(CC) $(CFLAGS) -c $<
 
 tuplas_svc.o: tuplas_svc.c tuplas.h
 	$(CC) $(CFLAGS) -c $<
 
-tuplas_server.o: tuplas_server.c tuplas.h
+servidor-rpc.o: servidor-rpc.c tuplas.h
 	$(CC) $(CFLAGS) -c $<
 
-server: tuplas_server.o tuplas_svc.o tuplas_xdr.o
-	$(CC) -o tuplas_server tuplas_server.o tuplas_svc.o tuplas_xdr.o $(LDLIBS)
+server: servidor-rpc.o tuplas_svc.o tuplas_xdr.o
+	$(CC) -o servidor servidor-rpc.o tuplas_svc.o tuplas_xdr.o $(LDLIBS)
 
 # 3) Librería compartida libclaves.so
 tuplas_clnt.o: tuplas_clnt.c tuplas.h
@@ -66,6 +66,6 @@ clean:
 	rm -f core \
 	      $(GEN_SRCS) \
 	      *.o \
-	      tuplas_server \
+	      servidor \
 	      $(LIB_NAME) \
 	      $(CLIENT_APPS)
