@@ -9,92 +9,56 @@
 /* Default timeout can be changed using clnt_control() */
 static struct timeval TIMEOUT = { 25, 0 };
 
-int *
-set_value_1(set_args *argp, CLIENT *clnt)
+enum clnt_stat 
+set_value_1(set_args arg1, int *clnt_res,  CLIENT *clnt)
 {
-	static int clnt_res;
-
-	memset((char *)&clnt_res, 0, sizeof(clnt_res));
-	if (clnt_call (clnt, SET_VALUE,
-		(xdrproc_t) xdr_set_args, (caddr_t) argp,
-		(xdrproc_t) xdr_int, (caddr_t) &clnt_res,
-		TIMEOUT) != RPC_SUCCESS) {
-		return (NULL);
-	}
-	return (&clnt_res);
+	return (clnt_call(clnt, SET_VALUE,
+		(xdrproc_t) xdr_set_args, (caddr_t) &arg1,
+		(xdrproc_t) xdr_int, (caddr_t) clnt_res,
+		TIMEOUT));
 }
 
-get_result *
-get_value_1(int *argp, CLIENT *clnt)
+enum clnt_stat 
+get_value_1(int arg1, get_result *clnt_res,  CLIENT *clnt)
 {
-	static get_result clnt_res;
-
-	memset((char *)&clnt_res, 0, sizeof(clnt_res));
-	if (clnt_call (clnt, GET_VALUE,
-		(xdrproc_t) xdr_int, (caddr_t) argp,
-		(xdrproc_t) xdr_get_result, (caddr_t) &clnt_res,
-		TIMEOUT) != RPC_SUCCESS) {
-		return (NULL);
-	}
-	return (&clnt_res);
+	return (clnt_call(clnt, GET_VALUE,
+		(xdrproc_t) xdr_int, (caddr_t) &arg1,
+		(xdrproc_t) xdr_get_result, (caddr_t) clnt_res,
+		TIMEOUT));
 }
 
-int *
-modify_value_1(modify_args *argp, CLIENT *clnt)
+enum clnt_stat 
+modify_value_1(modify_args arg1, int *clnt_res,  CLIENT *clnt)
 {
-	static int clnt_res;
-
-	memset((char *)&clnt_res, 0, sizeof(clnt_res));
-	if (clnt_call (clnt, MODIFY_VALUE,
-		(xdrproc_t) xdr_modify_args, (caddr_t) argp,
-		(xdrproc_t) xdr_int, (caddr_t) &clnt_res,
-		TIMEOUT) != RPC_SUCCESS) {
-		return (NULL);
-	}
-	return (&clnt_res);
+	return (clnt_call(clnt, MODIFY_VALUE,
+		(xdrproc_t) xdr_modify_args, (caddr_t) &arg1,
+		(xdrproc_t) xdr_int, (caddr_t) clnt_res,
+		TIMEOUT));
 }
 
-int *
-delete_key_1(int *argp, CLIENT *clnt)
+enum clnt_stat 
+delete_key_1(int arg1, int *clnt_res,  CLIENT *clnt)
 {
-	static int clnt_res;
-
-	memset((char *)&clnt_res, 0, sizeof(clnt_res));
-	if (clnt_call (clnt, DELETE_KEY,
-		(xdrproc_t) xdr_int, (caddr_t) argp,
-		(xdrproc_t) xdr_int, (caddr_t) &clnt_res,
-		TIMEOUT) != RPC_SUCCESS) {
-		return (NULL);
-	}
-	return (&clnt_res);
+	return (clnt_call(clnt, DELETE_KEY,
+		(xdrproc_t) xdr_int, (caddr_t) &arg1,
+		(xdrproc_t) xdr_int, (caddr_t) clnt_res,
+		TIMEOUT));
 }
 
-int *
-exist_1(int *argp, CLIENT *clnt)
+enum clnt_stat 
+exist_1(int arg1, int *clnt_res,  CLIENT *clnt)
 {
-	static int clnt_res;
-
-	memset((char *)&clnt_res, 0, sizeof(clnt_res));
-	if (clnt_call (clnt, EXIST,
-		(xdrproc_t) xdr_int, (caddr_t) argp,
-		(xdrproc_t) xdr_int, (caddr_t) &clnt_res,
-		TIMEOUT) != RPC_SUCCESS) {
-		return (NULL);
-	}
-	return (&clnt_res);
+	return (clnt_call(clnt, EXIST,
+		(xdrproc_t) xdr_int, (caddr_t) &arg1,
+		(xdrproc_t) xdr_int, (caddr_t) clnt_res,
+		TIMEOUT));
 }
 
-int *
-destroy_1(void *argp, CLIENT *clnt)
+enum clnt_stat 
+destroy_1(int *clnt_res, CLIENT *clnt)
 {
-	static int clnt_res;
+	 return (clnt_call (clnt, DESTROY, (xdrproc_t) xdr_void, (caddr_t) NULL,
+		(xdrproc_t) xdr_int, (caddr_t) clnt_res,
+		TIMEOUT));
 
-	memset((char *)&clnt_res, 0, sizeof(clnt_res));
-	if (clnt_call (clnt, DESTROY,
-		(xdrproc_t) xdr_void, (caddr_t) argp,
-		(xdrproc_t) xdr_int, (caddr_t) &clnt_res,
-		TIMEOUT) != RPC_SUCCESS) {
-		return (NULL);
-	}
-	return (&clnt_res);
 }

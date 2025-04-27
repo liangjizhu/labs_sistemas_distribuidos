@@ -16,7 +16,43 @@
 #define SIG_PF void(*)(int)
 #endif
 
-void
+int
+_set_value_1 (set_args  *argp, void *result, struct svc_req *rqstp)
+{
+	return (set_value_1_svc(*argp, result, rqstp));
+}
+
+int
+_get_value_1 (int  *argp, void *result, struct svc_req *rqstp)
+{
+	return (get_value_1_svc(*argp, result, rqstp));
+}
+
+int
+_modify_value_1 (modify_args  *argp, void *result, struct svc_req *rqstp)
+{
+	return (modify_value_1_svc(*argp, result, rqstp));
+}
+
+int
+_delete_key_1 (int  *argp, void *result, struct svc_req *rqstp)
+{
+	return (delete_key_1_svc(*argp, result, rqstp));
+}
+
+int
+_exist_1 (int  *argp, void *result, struct svc_req *rqstp)
+{
+	return (exist_1_svc(*argp, result, rqstp));
+}
+
+int
+_destroy_1 (void  *argp, void *result, struct svc_req *rqstp)
+{
+	return (destroy_1_svc(result, rqstp));
+}
+
+static void
 tuplas_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 {
 	union {
@@ -26,9 +62,17 @@ tuplas_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 		int delete_key_1_arg;
 		int exist_1_arg;
 	} argument;
-	char *result;
+	union {
+		int set_value_1_res;
+		get_result get_value_1_res;
+		int modify_value_1_res;
+		int delete_key_1_res;
+		int exist_1_res;
+		int destroy_1_res;
+	} result;
+	bool_t retval;
 	xdrproc_t _xdr_argument, _xdr_result;
-	char *(*local)(char *, struct svc_req *);
+	bool_t (*local)(char *, void *, struct svc_req *);
 
 	switch (rqstp->rq_proc) {
 	case NULLPROC:
@@ -38,37 +82,37 @@ tuplas_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	case SET_VALUE:
 		_xdr_argument = (xdrproc_t) xdr_set_args;
 		_xdr_result = (xdrproc_t) xdr_int;
-		local = (char *(*)(char *, struct svc_req *)) set_value_1_svc;
+		local = (bool_t (*) (char *, void *,  struct svc_req *))_set_value_1;
 		break;
 
 	case GET_VALUE:
 		_xdr_argument = (xdrproc_t) xdr_int;
 		_xdr_result = (xdrproc_t) xdr_get_result;
-		local = (char *(*)(char *, struct svc_req *)) get_value_1_svc;
+		local = (bool_t (*) (char *, void *,  struct svc_req *))_get_value_1;
 		break;
 
 	case MODIFY_VALUE:
 		_xdr_argument = (xdrproc_t) xdr_modify_args;
 		_xdr_result = (xdrproc_t) xdr_int;
-		local = (char *(*)(char *, struct svc_req *)) modify_value_1_svc;
+		local = (bool_t (*) (char *, void *,  struct svc_req *))_modify_value_1;
 		break;
 
 	case DELETE_KEY:
 		_xdr_argument = (xdrproc_t) xdr_int;
 		_xdr_result = (xdrproc_t) xdr_int;
-		local = (char *(*)(char *, struct svc_req *)) delete_key_1_svc;
+		local = (bool_t (*) (char *, void *,  struct svc_req *))_delete_key_1;
 		break;
 
 	case EXIST:
 		_xdr_argument = (xdrproc_t) xdr_int;
 		_xdr_result = (xdrproc_t) xdr_int;
-		local = (char *(*)(char *, struct svc_req *)) exist_1_svc;
+		local = (bool_t (*) (char *, void *,  struct svc_req *))_exist_1;
 		break;
 
 	case DESTROY:
 		_xdr_argument = (xdrproc_t) xdr_void;
 		_xdr_result = (xdrproc_t) xdr_int;
-		local = (char *(*)(char *, struct svc_req *)) destroy_1_svc;
+		local = (bool_t (*) (char *, void *,  struct svc_req *))_destroy_1;
 		break;
 
 	default:
@@ -80,13 +124,49 @@ tuplas_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 		svcerr_decode (transp);
 		return;
 	}
-	result = (*local)((char *)&argument, rqstp);
-	if (result != NULL && !svc_sendreply(transp, (xdrproc_t) _xdr_result, result)) {
+	retval = (bool_t) (*local)((char *)&argument, (void *)&result, rqstp);
+	if (retval > 0 && !svc_sendreply(transp, (xdrproc_t) _xdr_result, (char *)&result)) {
 		svcerr_systemerr (transp);
 	}
 	if (!svc_freeargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
 		fprintf (stderr, "%s", "unable to free arguments");
 		exit (1);
 	}
+	if (!tuplas_prog_1_freeresult (transp, _xdr_result, (caddr_t) &result))
+		fprintf (stderr, "%s", "unable to free results");
+
 	return;
+}
+
+int
+main (int argc, char **argv)
+{
+	register SVCXPRT *transp;
+
+	pmap_unset (TUPLAS_PROG, TUPLAS_VERS);
+
+	transp = svcudp_create(RPC_ANYSOCK);
+	if (transp == NULL) {
+		fprintf (stderr, "%s", "cannot create udp service.");
+		exit(1);
+	}
+	if (!svc_register(transp, TUPLAS_PROG, TUPLAS_VERS, tuplas_prog_1, IPPROTO_UDP)) {
+		fprintf (stderr, "%s", "unable to register (TUPLAS_PROG, TUPLAS_VERS, udp).");
+		exit(1);
+	}
+
+	transp = svctcp_create(RPC_ANYSOCK, 0, 0);
+	if (transp == NULL) {
+		fprintf (stderr, "%s", "cannot create tcp service.");
+		exit(1);
+	}
+	if (!svc_register(transp, TUPLAS_PROG, TUPLAS_VERS, tuplas_prog_1, IPPROTO_TCP)) {
+		fprintf (stderr, "%s", "unable to register (TUPLAS_PROG, TUPLAS_VERS, tcp).");
+		exit(1);
+	}
+
+	svc_run ();
+	fprintf (stderr, "%s", "svc_run returned");
+	exit (1);
+	/* NOTREACHED */
 }

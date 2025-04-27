@@ -7,21 +7,12 @@
 #include <string.h>
 #include <rpc/rpc.h>
 #include "tuplas.h"    /* rpcgen-generated */
+#include "claves.h"    /* para la firma API original */
 
-/* Prototipos de la API original */
-int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3);
-int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coord *value3);
-int modify_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3);
-int delete_key(int key);
-int exist(int key);
-int destroy(void);
-
-
-static const char *get_server_host(void) {
+static char *get_server_host() {
     char *h = getenv("IP_TUPLAS");
     return h ? h : "localhost";
 }
-
 
 /* set_value */
 int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3) {
@@ -40,11 +31,11 @@ int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coor
     args.key      = key;
     args.value1   = value1;
     args.N_value2 = N_value2;
-    args.value3   = value3;
+    args.value3   = *(Coord *)&value3;
     args.V_value2.V_value2_len = N_value2;
     args.V_value2.V_value2_val = V_value2;
 
-    /* CORRECCIÓN: pasar args por valor, no &args */
+    /* Invocar stub generado */
     stat = set_value_1(args, &result, cl);
     if (stat != RPC_SUCCESS) {
         clnt_perror(cl, "set_value RPC failed");
@@ -54,7 +45,6 @@ int set_value(int key, char *value1, int N_value2, double *V_value2, struct Coor
     clnt_destroy(cl);
     return result;
 }
-
 
 /* get_value */
 int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coord *value3) {
@@ -68,25 +58,26 @@ int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coo
         return -1;
     }
 
-    stat = get_value_1(key, &gres, cl);
+    /* Invocar stub */
+    stat = get_value_1(&key, &gres, cl);
     if (stat != RPC_SUCCESS || gres.status != 0) {
         if (stat != RPC_SUCCESS) clnt_perror(cl, "get_value RPC failed");
         clnt_destroy(cl);
         return -1;
     }
 
-    /* Copiar resultados a la API */
-    strncpy(value1, gres.value1, 256);
+    /* Copiar resultados al API */
+    strncpy(value1, gres.value1, 255);
     value1[255] = '\0';
     *N_value2 = gres.N_value2;
     memcpy(V_value2, gres.V_value2.V_value2_val, sizeof(double) * gres.N_value2);
-    *value3 = gres.value3;
+    memcpy(value3, &gres.value3, sizeof(struct Coord));
 
+    /* Liberar memoria XDR */
     xdr_free((xdrproc_t)xdr_get_result, (char *)&gres);
     clnt_destroy(cl);
     return 0;
 }
-
 
 /* modify_value */
 int modify_value(int key, char *value1, int N_value2, double *V_value2, struct Coord value3) {
@@ -104,11 +95,10 @@ int modify_value(int key, char *value1, int N_value2, double *V_value2, struct C
     args.key      = key;
     args.value1   = value1;
     args.N_value2 = N_value2;
-    args.value3   = value3;
+    args.value3   = *(Coord *)&value3;
     args.V_value2.V_value2_len = N_value2;
     args.V_value2.V_value2_val = V_value2;
 
-    /* CORRECCIÓN: pasar args por valor, no &args */
     stat = modify_value_1(args, &result, cl);
     if (stat != RPC_SUCCESS) {
         clnt_perror(cl, "modify_value RPC failed");
@@ -118,7 +108,6 @@ int modify_value(int key, char *value1, int N_value2, double *V_value2, struct C
     clnt_destroy(cl);
     return result;
 }
-
 
 /* delete_key */
 int delete_key(int key) {
@@ -132,7 +121,7 @@ int delete_key(int key) {
         return -1;
     }
 
-    stat = delete_key_1(key, &result, cl);
+    stat = delete_key_1(&key, &result, cl);
     if (stat != RPC_SUCCESS) {
         clnt_perror(cl, "delete_key RPC failed");
         result = -1;
@@ -141,7 +130,6 @@ int delete_key(int key) {
     clnt_destroy(cl);
     return result;
 }
-
 
 /* exist */
 int exist(int key) {
@@ -155,7 +143,7 @@ int exist(int key) {
         return -1;
     }
 
-    stat = exist_1(key, &result, cl);
+    stat = exist_1(&key, &result, cl);
     if (stat != RPC_SUCCESS) {
         clnt_perror(cl, "exist RPC failed");
         result = -1;
@@ -164,7 +152,6 @@ int exist(int key) {
     clnt_destroy(cl);
     return result;
 }
-
 
 /* destroy */
 int destroy(void) {
@@ -178,7 +165,6 @@ int destroy(void) {
         return -1;
     }
 
-    /* CORRECCIÓN: la firma es destroy_1(int *result, CLIENT *clnt) */
     stat = destroy_1(&result, cl);
     if (stat != RPC_SUCCESS) {
         clnt_perror(cl, "destroy RPC failed");
