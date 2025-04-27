@@ -68,19 +68,35 @@ int get_value(int key, char *value1, int *N_value2, double *V_value2, struct Coo
         return -1;
     }
 
-    stat = get_value_1(key, &gres, cl);
-    if (stat != RPC_SUCCESS || gres.status != 0) {
-        if (stat != RPC_SUCCESS) clnt_perror(cl, "get_value RPC failed");
+    if (stat != RPC_SUCCESS) {
+        clnt_perror(cl, "get_value RPC failed");
         clnt_destroy(cl);
-        return -1;
+        return -2;  // Error de comunicación
     }
-
-    /* Copiar resultados a la API */
-    strncpy(value1, gres.value1, 256);
-    value1[255] = '\0';
+    
+    if (gres.status != 0) {
+        clnt_destroy(cl);
+        return -1;  // Error de aplicación (key no encontrada)
+    }
+    
+    /* Copiar resultados a la API, con seguridad */
+    if (gres.value1 != NULL) {
+        strncpy(value1, gres.value1, 256);
+        value1[255] = '\0';
+    } else {
+        value1[0] = '\0';
+    }
+    
     *N_value2 = gres.N_value2;
-    memcpy(V_value2, gres.V_value2.V_value2_val, sizeof(double) * gres.N_value2);
-    *value3 = gres.value3;
+    if (gres.V_value2.V_value2_val != NULL && gres.N_value2 > 0) {
+        memcpy(V_value2, gres.V_value2.V_value2_val, sizeof(double) * gres.N_value2);
+    } else {
+        *N_value2 = 0;
+    }
+    
+    if (value3 != NULL) {
+        *value3 = gres.value3;
+    }
 
     xdr_free((xdrproc_t)xdr_get_result, (char *)&gres);
     clnt_destroy(cl);

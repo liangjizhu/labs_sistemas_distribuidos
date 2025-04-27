@@ -81,10 +81,19 @@ echo "   ✓ app-cliente1 completado"
 echo
 
 echo "[9.2] Clientes 2–5 en paralelo (get/modify/delete/exist)"
-./app-cliente2 >c2.log 2>&1 &
-./app-cliente3 >c3.log 2>&1 &
-./app-cliente4 >c4.log 2>&1 &
-./app-cliente5 >c5.log 2>&1 &
+# Lanzar clientes en background y guardar PIDs
+pids=()
+./app-cliente2 >c2.log 2>&1 & pids+=($!)
+./app-cliente3 >c3.log 2>&1 & pids+=($!)
+./app-cliente4 >c4.log 2>&1 & pids+=($!)
+./app-cliente5 >c5.log 2>&1 & pids+=($!)
+
+# Esperar a que todos terminen
+for pid in "${pids[@]}"; do
+    wait "$pid"
+done
+echo "   ✓ Clientes 2–5 completados"
+
 
 # CLIENTS=(app-cliente2 app-cliente3 app-cliente4 app-cliente5)
 # PIDS=()
@@ -108,7 +117,11 @@ echo "   ✓ Clientes 2–5 completados (con posibles fallos reportados)"
 echo
 
 echo "[9.3] Destroy (app-cliente6)"
-./app-cliente6
+./app-cliente6 > c6.log 2>&1 & pids+=($!)
+# Esperar a que termine
+for pid in "${pids[@]}"; do
+    wait "$pid"
+done
 echo "   ✓ app-cliente6 completado"
 echo
 
