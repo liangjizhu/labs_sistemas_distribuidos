@@ -81,13 +81,18 @@ echo "   ✓ app-cliente1 completado"
 echo
 
 echo "[9.2] Clientes 2–5 en paralelo (get/modify/delete/exist)"
-CLIENTS=(app-cliente2 app-cliente3 app-cliente4 app-cliente5)
-PIDS=()
-for cl in "${CLIENTS[@]}"; do
-  echo "   → Lanzando $cl en background"
-  ./$cl &
-  PIDS+=($!)
-done
+./app-cliente2 >c2.log 2>&1 &
+./app-cliente3 >c3.log 2>&1 &
+./app-cliente4 >c4.log 2>&1 &
+./app-cliente5 >c5.log 2>&1 &
+
+# CLIENTS=(app-cliente2 app-cliente3 app-cliente4 app-cliente5)
+# PIDS=()
+# for cl in "${CLIENTS[@]}"; do
+#   echo "   → Lanzando $cl en background"
+#   ./$cl &
+#   PIDS+=($!)
+# done
 
 # Aquí quitamos temporalmente el ‘set -e’ para que no nos mate el script si un cliente se segfaulta
 set +e
