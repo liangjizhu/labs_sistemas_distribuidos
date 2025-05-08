@@ -1,5 +1,7 @@
 from enum import Enum
 import argparse
+import socket
+import os
 
 class client :
 
@@ -19,54 +21,128 @@ class client :
 
 
     @staticmethod
-    def  register(user) :
-        #  Write your code here
-        return client.RC.ERROR
+    def register(user):
+        try:
+            print(f"Trying to connect to {client._server}:{client._port}")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
 
-   
+                s.sendall(b"REGISTER\0")
+
+                print(f"Sending user: {user}")
+                s.sendall(user.encode('utf-8') + b'\0')
+
+                response = s.recv(1)
+                if not response:
+                    print("c> REGISTER FAIL")
+                    return client.RC.ERROR
+
+                code = response[0]
+                print(f"Received code: {code}")
+                if code == 0:
+                    print("c> REGISTER OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> USERNAME IN USE")
+                    return client.RC.USER_ERROR
+                else:
+                    print("c> REGISTER FAIL")
+                    return client.RC.ERROR
+        except Exception as e:
+            print("Exception in register:", e)
+            print("c> REGISTER FAIL")
+            return client.RC.ERROR
+
+
     @staticmethod
-    def  unregister(user) :
-        #  Write your code here
-        return client.RC.ERROR
+    def unregister(user) :
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"UNREGISTER\0")
+                s.sendall(user.encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> UNREGISTER OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> USER DOES NOT EXIST")
+                    return client.RC.USER_ERROR
+                else:
+                    print("c> UNREGISTER FAIL")
+                    return client.RC.ERROR
+        except:
+            print("c> UNREGISTER FAIL")
+            return client.RC.ERROR
 
 
     
     @staticmethod
     def  connect(user) :
-        #  Write your code here
-        return client.RC.ERROR
+        try:
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind(('', 0))
+            server_socket.listen(1)
+            port = server_socket.getsockname()[1]
+
+            def listen_thread():
+                while True:
+                    conn, addr = server_socket.accept()
+                    conn.close()  # Placeholder
+
+            import threading
+            threading.Thread(target=listen_thread, daemon=True).start()
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"CONNECT\0")
+                s.sendall(user.encode('utf-8') + b'\0')
+                s.sendall(str(port).encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> CONNECT OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> CONNECT FAIL, USER DOES NOT EXIST")
+                    return client.RC.USER_ERROR
+                elif code == 2:
+                    print("c> USER ALREADY CONNECTED")
+                    return client.RC.USER_ERROR
+                else:
+                    print("c> CONNECT FAIL")
+                    return client.RC.ERROR
+        except:
+            print("c> CONNECT FAIL")
+            return client.RC.ERROR
 
 
     
     @staticmethod
     def  disconnect(user) :
-        #  Write your code here
-        return client.RC.ERROR
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"DISCONNECT\0")
+                s.sendall(user.encode('utf-8') + b'\0')
 
-    @staticmethod
-    def  publish(fileName,  description) :
-        #  Write your code here
-        return client.RC.ERROR
-
-    @staticmethod
-    def  delete(fileName) :
-        #  Write your code here
-        return client.RC.ERROR
-
-    @staticmethod
-    def  listusers() :
-        #  Write your code here
-        return client.RC.ERROR
-
-    @staticmethod
-    def  listcontent(user) :
-        #  Write your code here
-        return client.RC.ERROR
-
-    @staticmethod
-    def  getfile(user,  remote_FileName,  local_FileName) :
-        #  Write your code here
-        return client.RC.ERROR
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> DISCONNECT OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> DISCONNECT FAIL, USER DOES NOT EXIST")
+                    return client.RC.USER_ERROR
+                elif code == 2:
+                    print("c> DISCONNECT FAIL, USER NOT CONNECTED")
+                    return client.RC.USER_ERROR
+                else:
+                    print("c> DISCONNECT FAIL")
+                    return client.RC.ERROR
+        except:
+            print("c> DISCONNECT FAIL")
+            return client.RC.ERROR
 
     # *
     # **
