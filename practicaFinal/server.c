@@ -137,6 +137,117 @@ void *client_handler(void *arg) {
         }
     }
 
+    else if (strcmp(op, "PUBLISH") == 0) {
+        char path[MAX_NAME];
+        char desc[MAX_DESC];
+        read_string(client_sock, path);
+        read_string(client_sock, desc);
+
+        if (user_idx == -1) {
+            unsigned char res = 1;
+            send(client_sock, &res, 1, 0);
+        } else if (!users[user_idx].connected) {
+            unsigned char res = 2;
+            send(client_sock, &res, 1, 0);
+        } else {
+            for (int i = 0; i < users[user_idx].file_count; i++) {
+                if (strcmp(users[user_idx].files[i].filename, path) == 0) {
+                    unsigned char res = 3;
+                    send(client_sock, &res, 1, 0);
+                    goto END;
+                }
+            }
+            File *f = &users[user_idx].files[users[user_idx].file_count++];
+            strncpy(f->filename, path, MAX_NAME);
+            strncpy(f->description, desc, MAX_DESC);
+            unsigned char res = 0;
+            send(client_sock, &res, 1, 0);
+        }
+    }
+
+    else if (strcmp(op, "DELETE") == 0) {
+        char path[MAX_NAME];
+        read_string(client_sock, path);
+
+        if (user_idx == -1) {
+            unsigned char res = 1;
+            send(client_sock, &res, 1, 0);
+        } else if (!users[user_idx].connected) {
+            unsigned char res = 2;
+            send(client_sock, &res, 1, 0);
+        } else {
+            int found = 0;
+            for (int i = 0; i < users[user_idx].file_count; i++) {
+                if (strcmp(users[user_idx].files[i].filename, path) == 0) {
+                    users[user_idx].files[i] = users[user_idx].files[--users[user_idx].file_count];
+                    found = 1;
+                    break;
+                }
+            }
+            unsigned char res = found ? 0 : 3;
+            send(client_sock, &res, 1, 0);
+        }
+    }
+
+    else if (strcmp(op, "LIST USERS") == 0) {
+        if (user_idx == -1) {
+            unsigned char res = 1;
+            send(client_sock, &res, 1, 0);
+        } else if (!users[user_idx].connected) {
+            unsigned char res = 2;
+            send(client_sock, &res, 1, 0);
+        } else {
+            unsigned char res = 0;
+            send(client_sock, &res, 1, 0);
+            char num[10];
+            int count = 0;
+            for (int i = 0; i < user_count; i++)
+                if (users[i].connected)
+                    count++;
+            sprintf(num, "%d", count);
+            send(client_sock, num, strlen(num) + 1, 0);
+            for (int i = 0; i < user_count; i++) {
+                if (users[i].connected) {
+                    send(client_sock, users[i].name, strlen(users[i].name) + 1, 0);
+                    send(client_sock, users[i].ip, strlen(users[i].ip) + 1, 0);
+                    char port_str[10];
+                    sprintf(port_str, "%d", users[i].port);
+                    send(client_sock, port_str, strlen(port_str) + 1, 0);
+                }
+            }
+        }
+    }
+
+    else if (strcmp(op, "LIST CONTENT") == 0) {
+        char target[MAX_NAME];
+        read_string(client_sock, target);
+        int target_idx = -1;
+        for (int i = 0; i < user_count; i++)
+            if (strcmp(users[i].name, target) == 0)
+                target_idx = i;
+
+        if (user_idx == -1) {
+            unsigned char res = 1;
+            send(client_sock, &res, 1, 0);
+        } else if (!users[user_idx].connected) {
+            unsigned char res = 2;
+            send(client_sock, &res, 1, 0);
+        } else if (target_idx == -1) {
+            unsigned char res = 3;
+            send(client_sock, &res, 1, 0);
+        } else {
+            unsigned char res = 0;
+            send(client_sock, &res, 1, 0);
+            char num[10];
+            sprintf(num, "%d", users[target_idx].file_count);
+            send(client_sock, num, strlen(num) + 1, 0);
+            for (int i = 0; i < users[target_idx].file_count; i++) {
+                send(client_sock, users[target_idx].files[i].filename,
+                     strlen(users[target_idx].files[i].filename) + 1, 0);
+            }
+        }
+    }
+
 END:
     pthread_mutex_unlock(&user_mutex);
     close(client_sock);

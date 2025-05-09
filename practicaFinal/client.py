@@ -79,7 +79,7 @@ class client :
 
     
     @staticmethod
-    def  connect(user) :
+    def connect(user) :
         try:
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.bind(('', 0))
@@ -120,7 +120,7 @@ class client :
 
     
     @staticmethod
-    def  disconnect(user) :
+    def disconnect(user) :
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
@@ -142,6 +142,159 @@ class client :
                     return client.RC.ERROR
         except:
             print("c> DISCONNECT FAIL")
+            return client.RC.ERROR
+        
+    @staticmethod
+    def publish(fileName, description):
+        try:
+            username = "liang" 
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"PUBLISH\0")
+                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(fileName.encode('utf-8') + b'\0')
+                s.sendall(description.encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> PUBLISH OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> PUBLISH FAIL, USER DOES NOT EXIST")
+                elif code == 2:
+                    print("c> PUBLISH FAIL, USER NOT CONNECTED")
+                elif code == 3:
+                    print("c> PUBLISH FAIL, CONTENT ALREADY PUBLISHED")
+                else:
+                    print("c> PUBLISH FAIL")
+                return client.RC.ERROR
+        except:
+            print("c> PUBLISH FAIL")
+            return client.RC.ERROR
+
+    @staticmethod
+    def delete(fileName):
+        try:
+            username = "liang" 
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"DELETE\0")
+                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(fileName.encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> DELETE OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> DELETE FAIL, USER DOES NOT EXIST")
+                elif code == 2:
+                    print("c> DELETE FAIL, USER NOT CONNECTED")
+                elif code == 3:
+                    print("c> DELETE FAIL, CONTENT NOT PUBLISHED")
+                else:
+                    print("c> DELETE FAIL")
+                return client.RC.ERROR
+        except:
+            print("c> DELETE FAIL")
+            return client.RC.ERROR
+
+    @staticmethod
+    def listusers():
+        try:
+            username = "liang"
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"LIST USERS\0")
+                s.sendall(username.encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> LIST_USERS OK")
+                    count = int(s.recv(256).decode().strip('\0'))
+                    for _ in range(count):
+                        uname = s.recv(256).decode().strip('\0')
+                        ip = s.recv(256).decode().strip('\0')
+                        port = s.recv(256).decode().strip('\0')
+                        print(f"{uname} {ip} {port}")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> LIST_USERS FAIL, USER DOES NOT EXIST")
+                elif code == 2:
+                    print("c> LIST_USERS FAIL, USER NOT CONNECTED")
+                else:
+                    print("c> LIST_USERS FAIL")
+                return client.RC.ERROR
+        except:
+            print("c> LIST_USERS FAIL")
+            return client.RC.ERROR
+
+    @staticmethod
+    def listcontent(user):
+        try:
+            username = "liang"
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((client._server, client._port))
+                s.sendall(b"LIST CONTENT\0")
+                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(user.encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    print("c> LIST_CONTENT OK")
+                    count = int(s.recv(256).decode().strip('\0'))
+                    for _ in range(count):
+                        fname = s.recv(256).decode().strip('\0')
+                        print(fname)
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> LIST_CONTENT FAIL, USER DOES NOT EXIST")
+                elif code == 2:
+                    print("c> LIST_CONTENT FAIL, USER NOT CONNECTED")
+                elif code == 3:
+                    print("c> LIST_CONTENT FAIL, REMOTE USER DOES NOT EXIST")
+                else:
+                    print("c> LIST_CONTENT FAIL")
+                return client.RC.ERROR
+        except:
+            print("c> LIST_CONTENT FAIL")
+            return client.RC.ERROR
+
+    @staticmethod
+    def getfile(user, remote_FileName, local_FileName):
+        try:
+            # El cliente  obtiene IP/puerto del usuario con LIST_USERS
+            remote_ip = "liang"
+            remote_port = 9999
+
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((remote_ip, remote_port))
+                s.sendall(b"GET FILE\0")
+                s.sendall(remote_FileName.encode('utf-8') + b'\0')
+
+                code = s.recv(1)[0]
+                if code == 0:
+                    size_str = s.recv(256).decode().strip('\0')
+                    size = int(size_str)
+                    with open(local_FileName, 'wb') as f:
+                        remaining = size
+                        while remaining > 0:
+                            data = s.recv(min(1024, remaining))
+                            if not data:
+                                break
+                            f.write(data)
+                            remaining -= len(data)
+                    print("c> GET_FILE OK")
+                    return client.RC.OK
+                elif code == 1:
+                    print("c> GET_FILE FAIL, FILE NOT EXIST")
+                else:
+                    print("c> GET_FILE FAIL")
+                return client.RC.ERROR
+        except:
+            if os.path.exists(local_FileName):
+                os.remove(local_FileName)
+            print("c> GET_FILE FAIL")
             return client.RC.ERROR
 
     # *
