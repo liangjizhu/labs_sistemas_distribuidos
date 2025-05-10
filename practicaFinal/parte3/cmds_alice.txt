@@ -1,0 +1,13 @@
+REGISTER alice
+sleep 1
+CONNECT alice
+sleep 1
+PUBLISH input/alice/msg.txt "primer mensaje"
+sleep 1
+LIST_USERS
+sleep 1
+GET_FILE bob input/bob/msg.txt /tmp/alice_copy.txt
+sleep 1
+DISCONNECT alice
+sleep 1
+QUIT

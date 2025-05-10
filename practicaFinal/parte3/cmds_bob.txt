@@ -1,0 +1,14 @@
+sleep 0.5
+REGISTER bob
+sleep 1
+CONNECT bob
+sleep 1
+PUBLISH input/bob/msg.txt "respuesta de bob"
+sleep 1
+LIST_CONTENT alice
+sleep 1
+GET_FILE alice input/alice/msg.txt /tmp/bob_copy.txt
+sleep 1
+DISCONNECT bob
+sleep 1
+QUIT
