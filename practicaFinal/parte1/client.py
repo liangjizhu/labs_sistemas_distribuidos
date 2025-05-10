@@ -35,24 +35,24 @@ class client :
 
                 response = s.recv(1)
                 if not response:
-                    print("c> REGISTER FAIL")
+                    print("REGISTER FAIL")
                     return client.RC.ERROR
 
                 code = response[0]
                 print(f"Received code: {code}")
                 if code == 0:
-                    print("c> REGISTER OK")
+                    print("REGISTER OK")
                     client._user = user
                     return client.RC.OK
                 elif code == 1:
-                    print("c> USERNAME IN USE")
+                    print("USERNAME IN USE")
                     return client.RC.USER_ERROR
                 else:
-                    print("c> REGISTER FAIL")
+                    print("REGISTER FAIL")
                     return client.RC.ERROR
         except Exception as e:
             print("Exception in register:", e)
-            print("c> REGISTER FAIL")
+            print("REGISTER FAIL")
             return client.RC.ERROR
 
 
@@ -69,16 +69,16 @@ class client :
                     if code == 0:
                         if client._user == user:
                             client._user = None # Quita el usuario
-                    print("c> UNREGISTER OK")
+                    print("UNREGISTER OK")
                     return client.RC.OK
                 elif code == 1:
-                    print("c> USER DOES NOT EXIST")
+                    print("USER DOES NOT EXIST")
                     return client.RC.USER_ERROR
                 else:
-                    print("c> UNREGISTER FAIL")
+                    print("UNREGISTER FAIL")
                     return client.RC.ERROR
         except:
-            print("c> UNREGISTER FAIL")
+            print("UNREGISTER FAIL")
             return client.RC.ERROR
 
 
@@ -133,20 +133,20 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
-                    print("c> CONNECT OK")
+                    print("CONNECT OK")
                     client._user = user
                     return client.RC.OK
                 elif code == 1:
-                    print("c> CONNECT FAIL, USER DOES NOT EXIST")
+                    print("CONNECT FAIL, USER DOES NOT EXIST")
                     return client.RC.USER_ERROR
                 elif code == 2:
-                    print("c> USER ALREADY CONNECTED")
+                    print("USER ALREADY CONNECTED")
                     return client.RC.USER_ERROR
                 else:
-                    print("c> CONNECT FAIL")
+                    print("CONNECT FAIL")
                     return client.RC.ERROR
         except:
-            print("c> CONNECT FAIL")
+            print("CONNECT FAIL")
             return client.RC.ERROR
 
 
@@ -161,26 +161,26 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
-                    print("c> DISCONNECT OK")
+                    print("DISCONNECT OK")
                     return client.RC.OK
                 elif code == 1:
-                    print("c> DISCONNECT FAIL, USER DOES NOT EXIST")
+                    print("DISCONNECT FAIL, USER DOES NOT EXIST")
                     return client.RC.USER_ERROR
                 elif code == 2:
-                    print("c> DISCONNECT FAIL, USER NOT CONNECTED")
+                    print("DISCONNECT FAIL, USER NOT CONNECTED")
                     return client.RC.USER_ERROR
                 else:
-                    print("c> DISCONNECT FAIL")
+                    print("DISCONNECT FAIL")
                     return client.RC.ERROR
         except:
-            print("c> DISCONNECT FAIL")
+            print("DISCONNECT FAIL")
             return client.RC.ERROR
         
     @staticmethod
     def publish(fileName, description):
         try:
             if client._user is None:
-                print("c> ERROR: No user is connected.")
+                print("ERROR: No user is connected.")
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
@@ -191,26 +191,26 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
-                    print("c> PUBLISH OK")
+                    print("PUBLISH OK")
                     return client.RC.OK
                 elif code == 1:
-                    print("c> PUBLISH FAIL, USER DOES NOT EXIST")
+                    print("PUBLISH FAIL, USER DOES NOT EXIST")
                 elif code == 2:
-                    print("c> PUBLISH FAIL, USER NOT CONNECTED")
+                    print("PUBLISH FAIL, USER NOT CONNECTED")
                 elif code == 3:
-                    print("c> PUBLISH FAIL, CONTENT ALREADY PUBLISHED")
+                    print("PUBLISH FAIL, CONTENT ALREADY PUBLISHED")
                 else:
-                    print("c> PUBLISH FAIL")
+                    print("PUBLISH FAIL")
                 return client.RC.ERROR
         except:
-            print("c> PUBLISH FAIL")
+            print("PUBLISH FAIL")
             return client.RC.ERROR
 
     @staticmethod
     def delete(fileName):
         try:
             if client._user is None:
-                print("c> ERROR: No user is connected.")
+                print("ERROR: No user is connected.")
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
@@ -220,26 +220,26 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
-                    print("c> DELETE OK")
+                    print("DELETE OK")
                     return client.RC.OK
                 elif code == 1:
-                    print("c> DELETE FAIL, USER DOES NOT EXIST")
+                    print("DELETE FAIL, USER DOES NOT EXIST")
                 elif code == 2:
-                    print("c> DELETE FAIL, USER NOT CONNECTED")
+                    print("DELETE FAIL, USER NOT CONNECTED")
                 elif code == 3:
-                    print("c> DELETE FAIL, CONTENT NOT PUBLISHED")
+                    print("DELETE FAIL, CONTENT NOT PUBLISHED")
                 else:
-                    print("c> DELETE FAIL")
+                    print("DELETE FAIL")
                 return client.RC.ERROR
         except:
-            print("c> DELETE FAIL")
+            print("DELETE FAIL")
             return client.RC.ERROR
 
     @staticmethod
     def listusers():
         try:
             if client._user is None:
-                print("c> ERROR: No user is connected.")
+                print("ERROR: No user is connected.")
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
@@ -248,7 +248,7 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
-                    print("c> LIST_USERS OK")
+                    print("LIST_USERS OK")
                     count = int(client.read_string(s))
                     for _ in range(count):
                         uname = client.read_string(s)
@@ -257,15 +257,15 @@ class client :
                         print(f"{uname} {ip} {port}")
                     return client.RC.OK
                 elif code == 1:
-                    print("c> LIST_USERS FAIL, USER DOES NOT EXIST")
+                    print("LIST_USERS FAIL, USER DOES NOT EXIST")
                 elif code == 2:
-                    print("c> LIST_USERS FAIL, USER NOT CONNECTED")
+                    print("LIST_USERS FAIL, USER NOT CONNECTED")
                 else:
-                    print("c> LIST_USERS FAIL")
+                    print("LIST_USERS FAIL")
                 return client.RC.ERROR
         except Exception as e:
             print("Exception in LIST_USERS:", e)
-            print("c> LIST_USERS FAIL")
+            print("LIST_USERS FAIL")
             return client.RC.ERROR
 
 
@@ -274,7 +274,7 @@ class client :
     def listcontent(user):
         try:
             if client._user is None:
-                print("c> ERROR: No user is connected.")
+                print("ERROR: No user is connected.")
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
@@ -284,28 +284,31 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
-                    print("c> LIST_CONTENT OK")
+                    print("LIST_CONTENT OK")
                     count = int(client.read_string(s))
                     for _ in range(count):
                         fname = client.read_string(s)
                         print(fname)
                     return client.RC.OK
                 elif code == 1:
-                    print("c> LIST_CONTENT FAIL, USER DOES NOT EXIST")
+                    print("LIST_CONTENT FAIL, USER DOES NOT EXIST")
                 elif code == 2:
-                    print("c> LIST_CONTENT FAIL, USER NOT CONNECTED")
+                    print("LIST_CONTENT FAIL, USER NOT CONNECTED")
                 elif code == 3:
-                    print("c> LIST_CONTENT FAIL, REMOTE USER DOES NOT EXIST")
+                    print("LIST_CONTENT FAIL, REMOTE USER DOES NOT EXIST")
                 else:
-                    print("c> LIST_CONTENT FAIL")
+                    print("LIST_CONTENT FAIL")
                 return client.RC.ERROR
         except:
-            print("c> LIST_CONTENT FAIL")
+            print("LIST_CONTENT FAIL")
             return client.RC.ERROR
 
     @staticmethod
     def getfile(user, remote_FileName, local_FileName):
         # Obtener IP y puerto del usuario desde el servidor
+        if client._user is None:
+            print("GET_FILE FAIL")
+            return client.RC.ERROR
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_info:
                 s_info.connect((client._server, client._port))
@@ -313,15 +316,15 @@ class client :
                 s_info.sendall(client._user.encode('utf-8') + b'\0')
                 s_info.sendall(user.encode('utf-8') + b'\0')
 
-                code_info = s_info.recv(1)[0]
-                if code_info != 0:
-                    print("c> GET_FILE FAIL: Could not get user info from server")
+                response = s_info.recv(1)
+                if not response or response[0] != 0:
+                    print("GET_FILE FAIL")
                     return client.RC.ERROR
 
                 remote_ip = client.read_string(s_info)
                 remote_port = int(client.read_string(s_info))
-        except:
-            print("c> GET_FILE FAIL: Could not contact server for user info")
+        except Exception as e:
+            print("GET_FILE FAIL")
             return client.RC.ERROR
 
         try:
@@ -330,9 +333,13 @@ class client :
                 s.sendall(b"GET FILE\0")
                 s.sendall(remote_FileName.encode('utf-8') + b'\0')
 
-                code = s.recv(1)[0]
+                response = s.recv(1)
+                if not response:
+                    print("GET_FILE FAIL")
+                    return client.RC.ERROR
+                code = response[0]
                 if code == 0:
-                    size_str = s.recv(256).decode().strip('\0')
+                    size_str = client.read_string(s)
                     size = int(size_str)
                     with open(local_FileName, 'wb') as f:
                         remaining = size
@@ -342,17 +349,22 @@ class client :
                                 break
                             f.write(data)
                             remaining -= len(data)
-                    print("c> GET_FILE OK")
+                        if remaining > 0:
+                            f.close()
+                            os.remove(local_FileName)
+                            print("GET_FILE FAIL")
+                            return client.RC.ERROR
+                    print("GET_FILE OK")
                     return client.RC.OK
                 elif code == 1:
-                    print("c> GET_FILE FAIL, FILE NOT EXIST")
+                    print("GET_FILE FAIL, FILE NOT EXIST")
                 else:
-                    print("c> GET_FILE FAIL")
+                    print("GET_FILE FAIL")
                 return client.RC.ERROR
-        except:
+        except Exception as e:
             if os.path.exists(local_FileName):
                 os.remove(local_FileName)
-            print("c> GET_FILE FAIL")
+            print("GET_FILE FAIL")
             return client.RC.ERROR
     
     # ******************** HELPERS *******************

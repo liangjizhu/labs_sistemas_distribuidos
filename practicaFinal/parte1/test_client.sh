@@ -29,6 +29,7 @@ CONNECT paolo
 LIST_USERS
 GET_FILE liang input/liang/file1.txt /tmp/copied_file.txt
 DELETE input/liang/file1.txt
+GET_FILE liang input/liang/file1.txt /tmp/copied_file.txt
 LIST_CONTENT paolo
 DISCONNECT liang
 DISCONNECT paolo
