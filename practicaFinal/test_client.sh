@@ -18,7 +18,6 @@ PUBLISH /home/liang/file1.txt "Intento duplicado"
 LIST_USERS
 LIST_CONTENT liang
 DELETE /home/liang/file1.txt
-LIST_CONTENT liang
 DISCONNECT liang
 QUIT
 EOF

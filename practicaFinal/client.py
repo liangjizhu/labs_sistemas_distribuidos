@@ -16,6 +16,8 @@ class client :
     # ****************** ATTRIBUTES ******************
     _server = None
     _port = -1
+    _user = None
+    _user_connections = {}  # clave: nombre de usuario → (IP, puerto)
 
     # ******************** METHODS *******************
 
@@ -41,6 +43,7 @@ class client :
                 print(f"Received code: {code}")
                 if code == 0:
                     print("c> REGISTER OK")
+                    client._user = user
                     return client.RC.OK
                 elif code == 1:
                     print("c> USERNAME IN USE")
@@ -64,6 +67,9 @@ class client :
 
                 code = s.recv(1)[0]
                 if code == 0:
+                    if code == 0:
+                        if client._user == user:
+                            client._user = None # Quita el usuario
                     print("c> UNREGISTER OK")
                     return client.RC.OK
                 elif code == 1:
@@ -103,6 +109,7 @@ class client :
                 code = s.recv(1)[0]
                 if code == 0:
                     print("c> CONNECT OK")
+                    client._user = user
                     return client.RC.OK
                 elif code == 1:
                     print("c> CONNECT FAIL, USER DOES NOT EXIST")
@@ -147,11 +154,13 @@ class client :
     @staticmethod
     def publish(fileName, description):
         try:
-            username = "liang" 
+            if client._user is None:
+                print("c> ERROR: No user is connected.")
+                return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
                 s.sendall(b"PUBLISH\0")
-                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(client._user.encode('utf-8') + b'\0')
                 s.sendall(fileName.encode('utf-8') + b'\0')
                 s.sendall(description.encode('utf-8') + b'\0')
 
@@ -175,11 +184,13 @@ class client :
     @staticmethod
     def delete(fileName):
         try:
-            username = "liang" 
+            if client._user is None:
+                print("c> ERROR: No user is connected.")
+                return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
                 s.sendall(b"DELETE\0")
-                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(client._user.encode('utf-8') + b'\0')
                 s.sendall(fileName.encode('utf-8') + b'\0')
 
                 code = s.recv(1)[0]
@@ -202,11 +213,13 @@ class client :
     @staticmethod
     def listusers():
         try:
-            username = "liang"
+            if client._user is None:
+                print("c> ERROR: No user is connected.")
+                return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
                 s.sendall(b"LIST USERS\0")
-                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(client._user.encode('utf-8') + b'\0')
 
                 code = s.recv(1)[0]
                 if code == 0:
@@ -232,11 +245,13 @@ class client :
     @staticmethod
     def listcontent(user):
         try:
-            username = "liang"
+            if client._user is None:
+                print("c> ERROR: No user is connected.")
+                return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
                 s.sendall(b"LIST CONTENT\0")
-                s.sendall(username.encode('utf-8') + b'\0')
+                s.sendall(client._user.encode('utf-8') + b'\0')
                 s.sendall(user.encode('utf-8') + b'\0')
 
                 code = s.recv(1)[0]
@@ -262,11 +277,13 @@ class client :
 
     @staticmethod
     def getfile(user, remote_FileName, local_FileName):
-        try:
-            # El cliente  obtiene IP/puerto del usuario con LIST_USERS
-            remote_ip = "liang"
-            remote_port = 9999
+        if user not in client._user_connections:
+            print("c> GET_FILE FAIL: No IP/port info for user. Use LIST_USERS first.")
+            return client.RC.ERROR
 
+        remote_ip, remote_port = client._user_connections[user]
+
+        try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((remote_ip, remote_port))
                 s.sendall(b"GET FILE\0")
@@ -297,6 +314,7 @@ class client :
             print("c> GET_FILE FAIL")
             return client.RC.ERROR
 
+
     # *
     # **
     # * @brief Command interpreter for the client. It calls the protocol functions.
@@ -308,7 +326,6 @@ class client :
                 command = input("c> ")
                 line = command.split(" ")
                 if (len(line) > 0):
-
                     line[0] = line[0].upper()
 
                     if (line[0]=="REGISTER") :
@@ -420,4 +437,5 @@ class client :
     
 
 if __name__=="__main__":
-    client.main([])
+    import sys
+    client.main(sys.argv[1:])
