@@ -15,5 +15,7 @@ sendlog_1_svc(log_entry *argp, struct svc_req *rqstp)
            argp->operation,
            argp->timestamp);
     fflush(stdout);
-    return NULL;
+    /* Para que el wrapper llame a svc_sendreply, devolvemos un puntero no NULL */
+    static char dummy; 
+    return &dummy;
 }
