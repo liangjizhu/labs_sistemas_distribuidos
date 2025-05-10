@@ -331,7 +331,7 @@ class client :
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((remote_ip, remote_port))
                 s.sendall(b"GET FILE\0")
-                s.sendall(remote_FileName.encode('utf-8') + b'\0')
+                s.sendall(local_FileName.encode('utf-8') + b'\0')
 
                 response = s.recv(1)
                 if not response:
@@ -341,7 +341,7 @@ class client :
                 if code == 0:
                     size_str = client.read_string(s)
                     size = int(size_str)
-                    with open(local_FileName, 'wb') as f:
+                    with open(remote_FileName, 'wb') as f:
                         remaining = size
                         while remaining > 0:
                             data = s.recv(min(1024, remaining))
@@ -351,7 +351,7 @@ class client :
                             remaining -= len(data)
                         if remaining > 0:
                             f.close()
-                            os.remove(local_FileName)
+                            os.remove(remote_FileName)
                             print("GET_FILE FAIL")
                             return client.RC.ERROR
                     print("GET_FILE OK")
@@ -362,8 +362,8 @@ class client :
                     print("GET_FILE FAIL")
                 return client.RC.ERROR
         except Exception as e:
-            if os.path.exists(local_FileName):
-                os.remove(local_FileName)
+            if os.path.exists(remote_FileName):
+                os.remove(remote_FileName)
             print("GET_FILE FAIL")
             return client.RC.ERROR
     
