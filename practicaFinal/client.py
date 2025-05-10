@@ -94,8 +94,34 @@ class client :
 
             def listen_thread():
                 while True:
-                    conn, addr = server_socket.accept()
-                    conn.close()  # Placeholder
+                    try:
+                        conn, addr = server_socket.accept()
+                    except OSError:
+                        # socket cerrado -> salir del hilo
+                        break
+
+                    # 1) Leer operación
+                    op = client.read_string(conn)
+                    if op == "GET FILE":
+                        # 2) Leer nombre de fichero
+                        remote_file = client.read_string(conn)
+                        # 3) Comprobar existencia
+                        if not os.path.isfile(remote_file):
+                            conn.sendall(b'\1')           # código = 1 → no existe
+                        else:
+                            conn.sendall(b'\0')           # código = 0 → existe
+                            size = os.path.getsize(remote_file)
+                            # enviar tamaño
+                            conn.sendall(str(size).encode() + b'\0')
+                            # enviar contenido en bloques
+                            with open(remote_file, 'rb') as f:
+                                while True:
+                                    chunk = f.read(1024)
+                                    if not chunk:
+                                        break
+                                    conn.sendall(chunk)
+                    # Cerrar siempre la conexión
+                    conn.close()
 
             import threading
             threading.Thread(target=listen_thread, daemon=True).start()
@@ -313,7 +339,18 @@ class client :
                 os.remove(local_FileName)
             print("c> GET_FILE FAIL")
             return client.RC.ERROR
-
+    
+    # ******************** HELPERS *******************
+    @staticmethod
+    def read_string(sock):
+        """Lee bytes hasta '\0' y devuelve la cadena UTF-8 sin el terminador."""
+        buf = bytearray()
+        while True:
+            b = sock.recv(1)
+            if not b or b == b'\0':
+                break
+            buf.extend(b)
+        return buf.decode('utf-8')
 
     # *
     # **

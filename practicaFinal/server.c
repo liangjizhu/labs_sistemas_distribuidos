@@ -108,6 +108,7 @@ void *client_handler(void *arg) {
     else if (strcmp(op, "CONNECT") == 0) {
         char port_str[MAX_NAME];
         read_string(client_sock, port_str);
+
         if (user_idx == -1) {
             unsigned char res = 1;
             send(client_sock, &res, 1, 0);
@@ -116,12 +117,20 @@ void *client_handler(void *arg) {
             send(client_sock, &res, 1, 0);
         } else {
             users[user_idx].connected = 1;
-            inet_ntop(AF_INET, &((struct sockaddr_in*)&client_sock)->sin_addr, users[user_idx].ip, INET_ADDRSTRLEN);
+
+            // ← Nuevo código para IP real
+            struct sockaddr_in peer;
+            socklen_t peer_len = sizeof(peer);
+            getpeername(client_sock, (struct sockaddr *)&peer, &peer_len);
+            inet_ntop(AF_INET, &peer.sin_addr,
+                    users[user_idx].ip, INET_ADDRSTRLEN);
+
             users[user_idx].port = atoi(port_str);
             unsigned char res = 0;
             send(client_sock, &res, 1, 0);
         }
     }
+
 
     else if (strcmp(op, "DISCONNECT") == 0) {
         if (user_idx == -1) {
@@ -199,17 +208,21 @@ void *client_handler(void *arg) {
         } else {
             unsigned char res = 0;
             send(client_sock, &res, 1, 0);
-            char num[10];
+
+            // 1) Contar sólo **otros** usuarios
             int count = 0;
+            int num;
             for (int i = 0; i < user_count; i++)
-                if (users[i].connected)
+                if (users[i].connected && i != user_idx)
                     count++;
             sprintf(num, "%d", count);
             send(client_sock, num, strlen(num) + 1, 0);
+
+            // 2) Enviar sólo **otros** usuarios
             for (int i = 0; i < user_count; i++) {
-                if (users[i].connected) {
+                if (users[i].connected && i != user_idx) {
                     send(client_sock, users[i].name, strlen(users[i].name) + 1, 0);
-                    send(client_sock, users[i].ip, strlen(users[i].ip) + 1, 0);
+                    send(client_sock, users[i].ip,   strlen(users[i].ip)   + 1, 0);
                     char port_str[10];
                     sprintf(port_str, "%d", users[i].port);
                     send(client_sock, port_str, strlen(port_str) + 1, 0);
