@@ -1,5 +1,6 @@
 from enum import Enum
 import argparse
+import requests
 import socket
 import os
 
@@ -28,7 +29,8 @@ class client :
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
 
-                s.sendall(b"REGISTER\0")
+                # Enviar REGISTER + timestamp
+                client._send_op(s, "REGISTER")
 
                 print(f"Sending user: {user}")
                 s.sendall(user.encode('utf-8') + b'\0')
@@ -61,7 +63,8 @@ class client :
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"UNREGISTER\0")
+                # Enviar UNREGISTER + timestamp
+                client._send_op(s, "UNREGISTER")
                 s.sendall(user.encode('utf-8') + b'\0')
 
                 code = s.recv(1)[0]
@@ -127,7 +130,8 @@ class client :
 
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"CONNECT\0")
+                # Enviar CONNECT + timestamp
+                client._send_op(s, "CONNECT")
                 s.sendall(user.encode('utf-8') + b'\0')
                 s.sendall(str(port).encode('utf-8') + b'\0')
 
@@ -156,7 +160,8 @@ class client :
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"DISCONNECT\0")
+                # Enviar DISCONNECT + timestamp
+                client._send_op(s, "DISCONNECT")
                 s.sendall(user.encode('utf-8') + b'\0')
 
                 code = s.recv(1)[0]
@@ -184,7 +189,8 @@ class client :
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"PUBLISH\0")
+                # Enviar PUBLISH + timestamp
+                client._send_op(s, "PUBLISH")
                 s.sendall(client._user.encode('utf-8') + b'\0')
                 s.sendall(fileName.encode('utf-8') + b'\0')
                 s.sendall(description.encode('utf-8') + b'\0')
@@ -214,7 +220,8 @@ class client :
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"DELETE\0")
+                # Enviar DELETE + timestamp
+                client._send_op(s, "DELETE")
                 s.sendall(client._user.encode('utf-8') + b'\0')
                 s.sendall(fileName.encode('utf-8') + b'\0')
 
@@ -243,7 +250,8 @@ class client :
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"LIST USERS\0")
+                # Enviar LIST USERS + timestamp
+                client._send_op(s, "LIST USERS")
                 s.sendall(client._user.encode('utf-8') + b'\0')
 
                 code = s.recv(1)[0]
@@ -278,7 +286,8 @@ class client :
                 return client.RC.ERROR
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.connect((client._server, client._port))
-                s.sendall(b"LIST CONTENT\0")
+                # Enviar LIST CONTENT + timestamp
+                client._send_op(s, "LIST CONTENT")
                 s.sendall(client._user.encode('utf-8') + b'\0')
                 s.sendall(user.encode('utf-8') + b'\0')
 
@@ -312,7 +321,8 @@ class client :
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_info:
                 s_info.connect((client._server, client._port))
-                s_info.sendall(b"GET USER INFO\0")
+                # Enviar GET USER INFO + timestamp
+                client._send_op(s_info, "GET USER INFO")
                 s_info.sendall(client._user.encode('utf-8') + b'\0')
                 s_info.sendall(user.encode('utf-8') + b'\0')
 
@@ -378,6 +388,20 @@ class client :
                 break
             buf.extend(b)
         return buf.decode('utf-8')
+    @staticmethod
+    def _send_op(s, op_str):
+        """
+        Envía el opcode NUL-terminated y a continuación pide al servicio web
+        la fecha/hora, enviándola también NUL-terminated.
+        """
+        # 1) Opcode
+        s.sendall(op_str.encode('utf-8') + b'\0')
+        # 2) Timestamp desde el servicio web
+        try:
+            ts = requests.get('http://127.0.0.1:5000/datetime').text
+        except Exception:
+            ts = ""
+        s.sendall(ts.encode('utf-8') + b'\0')
 
     # *
     # **

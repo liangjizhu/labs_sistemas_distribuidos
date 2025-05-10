@@ -52,20 +52,28 @@ void *client_handler(void *arg) {
     free(arg);
 
     char op[MAX_NAME];
+    char ts[MAX_NAME];
     char user[MAX_NAME];
-
     if (!read_string(client_sock, op)) {
         close(client_sock);
         pthread_exit(NULL);
     }
-
+    // Primero leo el timestamp que envía el cliente tras el opcode
+    if (!read_string(client_sock, ts)) { 
+        close(client_sock); 
+        pthread_exit(NULL); 
+    }
+    // Luego leo el nombre de usuario
     if (!read_string(client_sock, user)) {
         close(client_sock);
         pthread_exit(NULL);
     }
+    
+    
 
-    printf("s> OPERATION %s FROM %s\n", op, user);
-
+    printf("s> OPERATION %s FROM %s AT %s\n", op, user, ts);
+    // server.log
+    fflush(stdout);
     pthread_mutex_lock(&user_mutex);
 
     // Buscar índice del usuario
