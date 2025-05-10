@@ -1,7 +1,0 @@
-UNREGISTER liang
-REGISTER liang
-CONNECT liang
-PUBLISH input/liang/file1.txt "Doc prueba"
-LIST_USERS
-DISCONNECT liang
-QUIT
