@@ -17,7 +17,6 @@ class client :
     _server = None
     _port = -1
     _user = None
-    _user_connections = {}  # clave: nombre de usuario → (IP, puerto)
 
     # ******************** METHODS *******************
 
@@ -250,11 +249,11 @@ class client :
                 code = s.recv(1)[0]
                 if code == 0:
                     print("c> LIST_USERS OK")
-                    count = int(s.recv(256).decode().strip('\0'))
+                    count = int(client.read_string(s))
                     for _ in range(count):
-                        uname = s.recv(256).decode().strip('\0')
-                        ip = s.recv(256).decode().strip('\0')
-                        port = s.recv(256).decode().strip('\0')
+                        uname = client.read_string(s)
+                        ip = client.read_string(s)
+                        port = client.read_string(s)
                         print(f"{uname} {ip} {port}")
                     return client.RC.OK
                 elif code == 1:
@@ -264,9 +263,12 @@ class client :
                 else:
                     print("c> LIST_USERS FAIL")
                 return client.RC.ERROR
-        except:
+        except Exception as e:
+            print("Exception in LIST_USERS:", e)
             print("c> LIST_USERS FAIL")
             return client.RC.ERROR
+
+
 
     @staticmethod
     def listcontent(user):
@@ -303,11 +305,24 @@ class client :
 
     @staticmethod
     def getfile(user, remote_FileName, local_FileName):
-        if user not in client._user_connections:
-            print("c> GET_FILE FAIL: No IP/port info for user. Use LIST_USERS first.")
-            return client.RC.ERROR
+        # Obtener IP y puerto del usuario desde el servidor
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s_info:
+                s_info.connect((client._server, client._port))
+                s_info.sendall(b"GET USER INFO\0")
+                s_info.sendall(client._user.encode('utf-8') + b'\0')
+                s_info.sendall(user.encode('utf-8') + b'\0')
 
-        remote_ip, remote_port = client._user_connections[user]
+                code_info = s_info.recv(1)[0]
+                if code_info != 0:
+                    print("c> GET_FILE FAIL: Could not get user info from server")
+                    return client.RC.ERROR
+
+                remote_ip = client.read_string(s_info)
+                remote_port = int(client.read_string(s_info))
+        except:
+            print("c> GET_FILE FAIL: Could not contact server for user info")
+            return client.RC.ERROR
 
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -475,4 +490,4 @@ class client :
 
 if __name__=="__main__":
     import sys
-    client.main(sys.argv[1:])
+    client.main([])

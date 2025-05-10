@@ -211,7 +211,7 @@ void *client_handler(void *arg) {
 
             // 1) Contar sólo **otros** usuarios
             int count = 0;
-            int num;
+            char num[10];
             for (int i = 0; i < user_count; i++)
                 if (users[i].connected && i != user_idx)
                     count++;
@@ -260,6 +260,37 @@ void *client_handler(void *arg) {
             }
         }
     }
+    else if (strcmp(op, "GET USER INFO") == 0) {
+        char target[MAX_NAME];
+        read_string(client_sock, target);
+    
+        int target_idx = -1;
+        for (int i = 0; i < user_count; i++) {
+            if (strcmp(users[i].name, target) == 0) {
+                target_idx = i;
+                break;
+            }
+        }
+    
+        if (user_idx == -1) {
+            unsigned char res = 1;  // usuario que hace la petición no existe
+            send(client_sock, &res, 1, 0);
+        } else if (!users[user_idx].connected) {
+            unsigned char res = 2;  // usuario que hace la petición no está conectado
+            send(client_sock, &res, 1, 0);
+        } else if (target_idx == -1 || !users[target_idx].connected) {
+            unsigned char res = 3;  // usuario objetivo no existe o no está conectado
+            send(client_sock, &res, 1, 0);
+        } else {
+            unsigned char res = 0;  // todo bien
+            send(client_sock, &res, 1, 0);
+            send(client_sock, users[target_idx].ip, strlen(users[target_idx].ip) + 1, 0);
+            char port_str[10];
+            sprintf(port_str, "%d", users[target_idx].port);
+            send(client_sock, port_str, strlen(port_str) + 1, 0);
+        }
+    }
+    
 
 END:
     pthread_mutex_unlock(&user_mutex);
