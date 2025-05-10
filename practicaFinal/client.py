@@ -285,9 +285,9 @@ class client :
                 code = s.recv(1)[0]
                 if code == 0:
                     print("c> LIST_CONTENT OK")
-                    count = int(s.recv(256).decode().strip('\0'))
+                    count = int(client.read_string(s))
                     for _ in range(count):
-                        fname = s.recv(256).decode().strip('\0')
+                        fname = client.read_string(s)
                         print(fname)
                     return client.RC.OK
                 elif code == 1:
