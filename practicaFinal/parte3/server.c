@@ -5,12 +5,15 @@
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <rpc/rpc.h>
+#include "log.h"
 
 #define MAX_USERS 100
 #define MAX_FILES 100
 #define MAX_NAME 256
 #define MAX_DESC 256
-
+/* Timeout de 5 s para las llamadas RPC */
+static struct timeval CLIENT_TIMEOUT = { 5, 0 };
 typedef struct {
     char filename[MAX_NAME];
     char description[MAX_DESC];
@@ -47,6 +50,41 @@ int read_string(int sock, char *buffer) {
     return i > 0;
 }
 
+/*
+ * Construye y envía la entrada de log vía ONC-RPC al servidor de logs
+ * Si path!=NULL se concatena "op path", si es NULL solo "op".
+ */
+void send_to_rpc(const char *user, const char *op, const char *path, const char *ts) {
+    const char *rpc_host = getenv("LOG_RPC_IP");
+    if (!rpc_host) rpc_host = "127.0.0.1";
+
+    CLIENT *clnt = clnt_create(rpc_host, LOG_PROG, LOG_VERS, "tcp");
+    if (!clnt) {
+        clnt_pcreateerror("clnt_create");
+        return;
+    }
+
+    /* Preparo el message */
+    log_entry entry;
+    entry.username  = (char*)user;
+    static char fullop[MAX_NAME + MAX_DESC];
+    if (path)
+        snprintf(fullop, sizeof(fullop), "%s %s", op, path);
+    else
+        snprintf(fullop, sizeof(fullop), "%s", op);
+    entry.operation  = fullop;
+    entry.timestamp  = (char*)ts;
+
+    /* Llamada RPC */
+    if (clnt_call(clnt, SENDLOG,
+                  (xdrproc_t)xdr_log_entry, (caddr_t)&entry,
+                  (xdrproc_t)xdr_void,      NULL,
+                  CLIENT_TIMEOUT) != RPC_SUCCESS) {
+        clnt_perror(clnt, "clnt_call");
+    }
+    clnt_destroy(clnt);
+}
+
 void *client_handler(void *arg) {
     int client_sock = *(int *)arg;
     free(arg);
@@ -74,6 +112,8 @@ void *client_handler(void *arg) {
     printf("s> OPERATION %s FROM %s AT %s\n", op, user, ts);
     // server.log
     fflush(stdout);
+    /* --- Envío también al servidor RPC de logs --- */
+    /* Para los ops con path, lo haremos dentro de cada rama */
     pthread_mutex_lock(&user_mutex);
 
     // Buscar índice del usuario
@@ -100,6 +140,8 @@ void *client_handler(void *arg) {
             unsigned char res = 2;
             send(client_sock, &res, 1, 0);
         }
+        /* RPC log: no hay path */
+        send_to_rpc(user, op, NULL, ts);
     }
 
     else if (strcmp(op, "UNREGISTER") == 0) {
@@ -111,6 +153,7 @@ void *client_handler(void *arg) {
             unsigned char res = 0;
             send(client_sock, &res, 1, 0);
         }
+        send_to_rpc(user, op, NULL, ts);
     }
 
     else if (strcmp(op, "CONNECT") == 0) {
@@ -137,6 +180,7 @@ void *client_handler(void *arg) {
             unsigned char res = 0;
             send(client_sock, &res, 1, 0);
         }
+        send_to_rpc(user, op, NULL, ts);
     }
 
 
@@ -152,6 +196,7 @@ void *client_handler(void *arg) {
             unsigned char res = 0;
             send(client_sock, &res, 1, 0);
         }
+        send_to_rpc(user, op, NULL, ts);
     }
 
     else if (strcmp(op, "PUBLISH") == 0) {
@@ -180,6 +225,8 @@ void *client_handler(void *arg) {
             unsigned char res = 0;
             send(client_sock, &res, 1, 0);
         }
+        /* RPC log: incluimos la ruta */
+        send_to_rpc(user, op, path, ts);
     }
 
     else if (strcmp(op, "DELETE") == 0) {
@@ -204,6 +251,8 @@ void *client_handler(void *arg) {
             unsigned char res = found ? 0 : 3;
             send(client_sock, &res, 1, 0);
         }
+        /* RPC log: incluimos la ruta */
+        send_to_rpc(user, op, path, ts);
     }
 
     else if (strcmp(op, "LIST USERS") == 0) {
@@ -237,6 +286,7 @@ void *client_handler(void *arg) {
                 }
             }
         }
+        send_to_rpc(user, "LIST_USERS", NULL, ts);
     }
 
     else if (strcmp(op, "LIST CONTENT") == 0) {
@@ -267,6 +317,7 @@ void *client_handler(void *arg) {
                      strlen(users[target_idx].files[i].filename) + 1, 0);
             }
         }
+        send_to_rpc(user, "LIST_CONTENT", NULL, ts);
     }
     else if (strcmp(op, "GET USER INFO") == 0) {
         char target[MAX_NAME];
@@ -297,6 +348,7 @@ void *client_handler(void *arg) {
             sprintf(port_str, "%d", users[target_idx].port);
             send(client_sock, port_str, strlen(port_str) + 1, 0);
         }
+        send_to_rpc(user, "GET_USER_INFO", NULL, ts);
     }
     
 

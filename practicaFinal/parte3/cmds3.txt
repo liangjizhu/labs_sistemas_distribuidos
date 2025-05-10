@@ -1,0 +1,11 @@
+REGISTER liang
+sleep 1
+CONNECT liang
+sleep 1
+PUBLISH input/liang/file1.txt "RPC test"
+sleep 1
+LIST_USERS
+sleep 1
+DISCONNECT liang
+sleep 1
+QUIT
