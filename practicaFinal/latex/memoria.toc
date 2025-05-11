@@ -1,2 +1,26 @@
 \babel@toc {spanish}{}\relax 
 \contentsline {section}{\numberline {1}Introducción}{2}{}%
+\contentsline {section}{\numberline {2}Parte 1: P2P básico}{2}{}%
+\contentsline {subsection}{\numberline {2.1}Protocolo de aplicación}{2}{}%
+\contentsline {subsection}{\numberline {2.2}Cliente Python}{3}{}%
+\contentsline {subsection}{\numberline {2.3}Servidor en C}{4}{}%
+\contentsline {subsection}{\numberline {2.4}Pruebas automáticas}{5}{}%
+\contentsline {subsection}{\numberline {2.5}Makefile}{5}{}%
+\contentsline {section}{\numberline {3}Parte 2: Servicio Web}{6}{}%
+\contentsline {subsection}{\numberline {3.1}Diseño del servicio}{6}{}%
+\contentsline {subsection}{\numberline {3.2}Integración con el cliente}{6}{}%
+\contentsline {subsection}{\numberline {3.3}Cambios en el servidor}{7}{}%
+\contentsline {subsection}{\numberline {3.4}Pruebas de validación}{7}{}%
+\contentsline {subsection}{\numberline {3.5}Conclusión}{8}{}%
+\contentsline {section}{\numberline {4}Parte 3: Sistema P2P con marcas temporales y concurrencia}{8}{}%
+\contentsline {subsection}{\numberline {4.1}Servicio Web de Fecha y Hora}{8}{}%
+\contentsline {subsection}{\numberline {4.2}Cliente con Timestamp}{9}{}%
+\contentsline {subsection}{\numberline {4.3}Servidor Concurrente con Registro de Operaciones}{9}{}%
+\contentsline {subsection}{\numberline {4.4}Prueba de concurrencia}{10}{}%
+\contentsline {subsection}{\numberline {4.5}Makefile y scripts de prueba}{10}{}%
+\contentsline {subsection}{\numberline {4.6}Conclusión de la Parte 3}{10}{}%
+\contentsline {section}{\numberline {5}Batería de pruebas}{10}{}%
+\contentsline {subsection}{\numberline {5.1}Pruebas funcionales (Parte 1)}{11}{}%
+\contentsline {subsection}{\numberline {5.2}Pruebas concurrentes (Parte 3)}{11}{}%
+\contentsline {subsection}{\numberline {5.3}Casos límite y errores controlados}{12}{}%
+\contentsline {subsection}{\numberline {5.4}Conclusiones de las pruebas}{12}{}%

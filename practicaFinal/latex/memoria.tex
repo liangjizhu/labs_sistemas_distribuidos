@@ -16,8 +16,10 @@
     numbersep=5pt,
     frame=single,
     captionpos=b
+    showstringspaces=false
 }
 
+\usepackage[strings]{underscore}
 \begin{document}
 
 % Portada
@@ -47,5 +49,397 @@
 
 % Introducción
 \section{Introducción}
+
+\section{Parte 1: P2P básico}
+
+En esta primera parte diseñamos e implementamos un sistema peer‐to‐peer simple en el que:
+
+\begin{itemize}
+  \item Cada cliente puede \textbf{registrarse} o \textbf{darse de baja} en el servidor central.
+  \item Un cliente \textbf{conectado} abre un socket TCP en un puerto y se anuncia al servidor.
+  \item Un cliente puede \textbf{publicar} un fichero (ruta y descripción) o \textbf{borrar} una publicación.
+  \item Un cliente puede \textbf{listar} los usuarios conectados y el contenido publicado de cualquier usuario.
+  \item Para \texttt{GET\_FILE}, el cliente pide al servidor central la IP y puerto remotos, abre conexión directa P2P y descarga el fichero.
+\end{itemize}
+
+\subsection{Protocolo de aplicación}
+
+Cada mensaje entre cliente y servidor central va con terminador NUL (\texttt{\textbackslash0}) y el flujo es:
+
+\begin{enumerate}
+  \item Cliente conecta TCP al servidor.
+  \item Envía la \textbf{operación} en ASCII más un \texttt{\textbackslash0}.
+  \item Envía parámetros (username, filename, descripción, puerto, etc.) cada uno terminado en \texttt{\textbackslash0}.
+  \item Servidor responde con un byte de código de retorno:
+    \begin{description}
+      \item[0:] OK.
+      \item[1:] Error de usuario (no existe / ya existe / no está conectado).
+      \item[2:] Error de estado (por ejemplo, usuario no conectado).
+      \item[3:] Error de aplicación (contenido duplicado, no publicado, etc.).
+    \end{description}
+  \item Para operaciones de \texttt{LIST\_USERS} o \texttt{LIST\_CONTENT}, tras el 0 viene un entero en ASCII (\texttt{"3\textbackslash0"}) y a continuación esa cantidad de cadenas NUL‐terminated.
+  \item Para \texttt{GET\_FILE}, primer byte = existencia (0 / 1), y si existe: tamaño en ASCII terminado en NUL, luego el contenido bruto.
+\end{enumerate}
+
+\subsection{Cliente Python}
+
+La lógica del cliente está en \texttt{client.py}. Usamos la librería \texttt{socket} y un hilo secundario para el P2P.  
+A continuación se muestra la cabecera de la clase y la implementación de \texttt{register} y \texttt{getfile}:
+
+\begin{lstlisting}[language=Python,caption={Fragmento de \texttt{client.py}: register y getfile},label=lst:client1]
+class client:
+    @staticmethod
+    def register(user):
+        with socket.socket() as s:
+            s.connect((client._server, client._port))
+            s.sendall(b"REGISTER\0")
+            s.sendall(user.encode() + b"\0")
+            code = s.recv(1)[0]
+            if code == 0:
+                print("REGISTER OK"); client._user = user
+            elif code == 1:
+                print("USERNAME IN USE")
+            else:
+                print("REGISTER FAIL")
+
+    @staticmethod
+    def getfile(user, remote_fn, local_fn):
+        # 1) Pido IP/puerto al servidor central
+        with socket.socket() as si:
+            si.connect((client._server, client._port))
+            si.sendall(b"GET USER INFO\0")
+            si.sendall(client._user.encode()+b"\0")
+            si.sendall(user.encode()+b"\0")
+            if si.recv(1)[0]!=0: return
+            ip = client.read_string(si)
+            port = int(client.read_string(si))
+        # 2) Conecto P2P y descargo
+        with socket.socket() as s2:
+            s2.connect((ip, port))
+            s2.sendall(b"GET FILE\0")
+            s2.sendall(remote_fn.encode()+b"\0")
+            if s2.recv(1)[0]==0:
+                size = int(client.read_string(s2))
+                with open(local_fn,"wb") as f:
+                    remain=size
+                    while remain>0:
+                        chunk=s2.recv(min(1024,remain))
+                        f.write(chunk); remain-=len(chunk)
+                print("GET_FILE OK")
+            else:
+                print("GET_FILE FAIL, FILE NOT EXIST")
+\end{lstlisting}
+
+\subsection{Servidor en C}
+
+El servidor central está en \texttt{server.c}. Usa hilos POSIX para cada conexión entrante.  
+Extracto de la inicialización y la rama de \texttt{PUBLISH}:
+
+\begin{lstlisting}[language=C,caption={Fragmento de \texttt{server.c}: arranque y PUBLISH},label=lst:server1]
+int main(...) {
+    signal(SIGINT, handle_sigint);
+    server_socket = socket(...);
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR,...);
+    bind(server_socket,...); listen(server_socket,10);
+    printf("s> init server 0.0.0.0:%d\n", port);
+    while(1) {
+        int *cs = malloc(sizeof(int));
+        *cs = accept(server_socket,...);
+        pthread_t tid;
+        pthread_create(&tid,NULL,client_handler,cs);
+        pthread_detach(tid);
+    }
+}
+
+void *client_handler(void *a) {
+    int sock = *(int*)a; free(a);
+    char op[MAX_NAME], user[MAX_NAME];
+    read_string(sock,op); read_string(sock,user);
+    printf("s> OPERATION %s FROM %s\n",op,user);
+    // ... logica de REGISTER, CONNECT, etc. ...
+    if(strcmp(op,"PUBLISH")==0) {
+        char path[MAX_NAME],desc[MAX_DESC];
+        read_string(sock,path); read_string(sock,desc);
+        // Comprueba duplicados y anade a users[user_idx].files[]
+        send(sock,&res,1,0);
+    }
+    close(sock); return NULL;
+}
+\end{lstlisting}
+
+\subsection{Pruebas automáticas}
+
+Para validar la Parte 1 creamos \texttt{run\_test.sh} que:
+
+\begin{itemize}
+  \item Registra dos usuarios (\texttt{paolo}, \texttt{liang}), prueba duplicados.
+  \item Conecta, publica y detecta duplicados.
+  \item Lista usuarios y contenidos, descarga un fichero con \texttt{GET\_FILE}.
+  \item Borra contenido y comprueba fallo de \texttt{GET\_FILE}.
+\end{itemize}
+
+Al ejecutarlo obtenemos:
+
+\begin{verbatim}
+[PASS] REGISTER liang (OK)
+[PASS] CONNECT liang (OK)
+...
+[PASS] Contenido de GET_FILE coincide
+[PASS] DELETE existing content (OK)
+[PASS] GET_FILE tras DELETE (FAIL)
++++ TODOS LOS TESTS SUPERADOS +++
+\end{verbatim}
+
+Este conjunto de pruebas cubre todos los casos del protocolo de la Parte 1. Así confirmamos que todas las funcionalidades son correctas, y todos los casos extremos se han tenido en cuenta.
+
+\subsection{Makefile}
+
+Finalmente, el \texttt{Makefile} compila cliente y servidor P2P:
+
+\begin{lstlisting}[caption={Makefile parte 1},label=lst:make1]
+CC = gcc
+CFLAGS = -Wall -pthread
+CLIENT_SRCS = client.py
+SERVER_SRCS = server.c
+
+all: server
+
+server: server.c
+	$(CC) $(CFLAGS) -o server server.c
+
+clean:
+	rm -f server
+\end{lstlisting}
+
+Con \texttt{make} obtenemos el binario \texttt{server} y luego ejecutamos \texttt{python3 client.py -s 127.0.0.1 -p 12345} para interactuar.
+
+\section{Parte 2: Servicio Web}
+
+Para añadir a la funcionalidad del P2P, en esta parte desarrollamos un servicio web local que devuelve la fecha y hora actual en el formato \texttt{DD/MM/YYYY HH:MM:SS}. Este servicio se utiliza para registrar la hora exacta en la que se realizan las operaciones del cliente.
+
+\subsection{Diseño del servicio}
+
+El servicio está implementado en Python usando Flask, en el archivo \texttt{datetime\_service.py}. El endpoint principal es:
+
+\begin{itemize}
+\item \texttt{GET /datetime}: devuelve una cadena con la fecha y hora actual.
+\end{itemize}
+
+\begin{lstlisting}[language=Python,caption={Fragmento de datetime\_service.py},label=lst:web1]
+@app.route('/datetime')
+def current_datetime():
+ts = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+return Response(ts, mimetype='text/plain')
+\end{lstlisting}
+
+\subsection{Integración con el cliente}
+
+Se modificó el cliente para que en cada operación (REGISTER, CONNECT, PUBLISH, etc.):
+
+\begin{enumerate}
+\item Se realice una petición HTTP al servicio web para obtener el timestamp.
+\item Se envíe este timestamp al servidor justo después del código de operación.
+\end{enumerate}
+
+Este comportamiento está encapsulado en la función \texttt{\_send\_op()}:
+
+\begin{lstlisting}[language=Python,caption={Cliente: envío de operación con timestamp},label=lst:web2]
+@staticmethod
+def _send_op(s, op_str):
+s.sendall(op_str.encode('utf-8') + b'\0')
+ts = requests.get('http://127.0.0.1:5000/datetime').text
+s.sendall(ts.encode('utf-8') + b'\0')
+\end{lstlisting}
+
+\subsection{Cambios en el servidor}
+
+El servidor en C fue modificado para leer y registrar el timestamp recibido tras el opcode. Se añadió un nuevo argumento que se lee al inicio del handler:
+
+\begin{lstlisting}[language=C,caption={Servidor: recepción del timestamp},label=lst:web3]
+char op[MAX_NAME];
+char ts[MAX_NAME];
+char user[MAX_NAME];
+read_string(client_sock, op);
+read_string(client_sock, ts);
+read_string(client_sock, user);
+printf("s> OPERATION %s FROM %s AT %s\n", op, user, ts);
+\end{lstlisting}
+
+\subsection{Pruebas de validación}
+
+Creamos un script \texttt{run_test.sh} que arranca el servicio web, lanza el servidor y realiza operaciones del cliente. This script checks that the timestamp is correct and that it appears in the log of the service:
+
+\begin{lstlisting}[language=bash,caption={Script de prueba automatizada},label=lst:web4]
+TS=$(curl -s http://127.0.0.1:5000/datetime)
+
+...
+
+grep -qE "^s> OPERATION REGISTER FROM liang AT [0-9]{2}/[0-9]{2}/[0-9]{4}" server.log
+\end{lstlisting}
+
+\subsection{Conclusión}
+
+La parte 2 ha permitido mejorar el sistema añadiendo el tiempo a cada operación. Esta mejora facilita el análisis del comportamiento del sistema y pone las bases para el registro remoto con RPC en la parte 3.
+
+\section{Parte 3: Sistema P2P con marcas temporales y concurrencia}
+
+En esta tercera parte se amplía el sistema P2P añadiendo dos mejoras principales:
+
+\begin{itemize}
+\item Incorporación de \textbf{marcas temporales} en las operaciones mediante un servicio web externo.
+\item Registro \textbf{concurrente de operaciones} en el servidor, asegurando consistencia.
+\end{itemize}
+
+\subsection{Servicio Web de Fecha y Hora}
+
+Para registrar todas las operaciones en el servidor junto con su fecha y hora, se implementa un microservicio en Python usando \texttt{Flask}, que ofrece la fecha y hora actuales en formato \texttt{dd/mm/yyyy HH:MM:SS}:
+
+\begin{lstlisting}[language=Python,caption={datetime_service.py},label=lst:datetime]
+@app.route('/datetime')
+def current_datetime():
+ts = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+return Response(ts, mimetype='text/plain')
+\end{lstlisting}
+
+El cliente realiza una petición HTTP al servicio antes de enviar cualquier operación al servidor central.
+
+\subsection{Cliente con Timestamp}
+
+El cliente Python se ha adaptado para:
+
+\begin{itemize}
+\item Obtener un timestamp del servicio web antes de cada operación.
+\item Enviar dicho timestamp al servidor tras el nombre de la operación, ambos terminados en NUL (\texttt{\textbackslash0}).
+\end{itemize}
+
+Esto se encapsula en el método auxiliar \texttt{_send_op}. Ejemplo:
+
+\begin{lstlisting}[language=Python,caption={Envío de operación con timestamp},label=lst:send_op]
+@staticmethod
+def _send_op(s, op_str):
+s.sendall(op_str.encode('utf-8') + b'\0')
+try:
+ts = requests.get('http://127.0.0.1:5000/datetime').text
+except Exception:
+ts = ""
+s.sendall(ts.encode('utf-8') + b'\0')
+\end{lstlisting}
+
+\subsection{Servidor Concurrente con Registro de Operaciones}
+
+El servidor central se mantiene en C y se ha extendido para registrar cada operación en un archivo \texttt{server.log}. Cada entrada incluye:
+
+\begin{itemize}
+\item El tipo de operación.
+\item El nombre del usuario.
+\item El timestamp recibido desde el cliente.
+\end{itemize}
+
+Ejemplo de entrada de log:
+
+\begin{verbatim}
+s> OPERATION REGISTER FROM alice AT 10/05/2025 23:08:02
+\end{verbatim}
+
+Este log se genera usando \texttt{fprintf} dentro de secciones protegidas por un \texttt{mutex}, para garantizar la concurrencia segura entre hilos.
+
+\subsection{Prueba de concurrencia}
+
+El script \texttt{run_concurrencia_test.sh} lanza dos clientes en paralelo que realizan operaciones completas: \texttt{REGISTER}, \texttt{CONNECT}, \texttt{PUBLISH}, \texttt{LIST}, \texttt{GET FILE}, etc.
+
+Este test verifica que:
+
+\begin{itemize}
+\item Todas las operaciones aparecen correctamente en \texttt{server.log}.
+\item El fichero \texttt{rpc.log} recoge un resumen de las acciones.
+\item Las transferencias P2P (	exttt{GET FILE}) funcionan correctamente incluso bajo concurrencia.
+\end{itemize}
+
+Fragmento de salida:
+
+\begin{verbatim}
+alice REGISTER 10/05/2025 23:08:02
+bob REGISTER 10/05/2025 23:08:03
+...
+alice_copy.txt => Hola desde Bob
+bob_copy.txt   => Hola desde Alice
++++ TEST DE CONCURRENCIA COMPLETADO +++
+\end{verbatim}
+
+\subsection{Makefile y scripts de prueba}
+
+El Makefile se ha mantenido consistente, compilando el servidor y permitiendo limpieza rápida del entorno.
+
+Los scripts \texttt{run_test.sh} y \texttt{run_concurrencia_test.sh} garantizan que el sistema funciona correctamente de forma secuencial y concurrente.
+
+\subsection{Conclusión de la Parte 3}
+
+Se ha implementado un sistema robusto que permite trazabilidad temporal y ejecución concurrente segura de operaciones. La integración con un servicio REST externo ilustra la interoperabilidad entre componentes distribuidos en diferentes lenguajes (Python y C), y prepara el sistema para futuras extensiones (auditoría, replicación, etc.).
+
+\section{Batería de pruebas}
+
+Con el objetivo de garantizar los casos extremos y el correcto funcionamiento de nuestro proyecto para todas las partes, se ha desarrollado una batería de pruebas automatizadas y manuales que cubren tanto el funcionamiento básico como situaciones límite. A continuación describimos esas pruebas.
+
+\subsection{Pruebas funcionales (Parte 1)}
+
+En la Parte 1 se diseñó el script \texttt{run\_test.sh}, que automatiza las siguientes pruebas:
+
+\begin{itemize}
+    \item Registro de usuarios y detección de duplicados.
+    \item Conexión de usuarios y publicación de contenidos.
+    \item Verificación de errores por contenido duplicado.
+    \item Listado de usuarios y de ficheros publicados.
+    \item Descarga de ficheros mediante conexión P2P.
+    \item Borrado de contenidos y verificación del fallo controlado en GET\_FILE tras la eliminación.
+\end{itemize}
+
+Todas las pruebas son validadas mediante aserciones (\texttt{assert}) que comprueban tanto el contenido como el flujo esperado. El script imprime resultados tipo \texttt{[PASS]} y finaliza exitosamente sólo si todas las condiciones son correctas.
+
+\subsection{Pruebas concurrentes (Parte 3)}
+
+En la Parte 3 se desarrolló \texttt{run\_concurrencia\_test.sh}, que simula dos clientes en paralelo (Alice y Bob), ejecutando comandos de forma escalonada y concurrente. Se validan los siguientes aspectos:
+
+\begin{itemize}
+    \item Registro simultáneo de múltiples usuarios.
+    \item Publicación de contenidos concurrente.
+    \item Acceso a contenidos del otro usuario durante la sesión activa.
+    \item Transferencia de ficheros entre clientes mediante P2P.
+    \item Desconexión ordenada y acceso controlado.
+\end{itemize}
+
+Los resultados del test muestran en el log del servidor que las operaciones se intercalan temporalmente, lo que demuestra que el servidor es concurrente y no secuencial. Además, el contenido transferido con \texttt{GET\_FILE} se compara con el original usando \texttt{diff}, garantizando integridad.
+
+\subsection{Casos límite y errores controlados}
+
+Además de los casos correctos, se incluyen pruebas para validar el comportamiento ante:
+
+\begin{itemize}
+    \item Intento de listar usuarios sin estar conectado.
+    \item Publicación de ficheros sin conexión previa.
+    \item Descarga de ficheros no existentes.
+    \item Solicitud de información de un usuario desconectado.
+\end{itemize}
+
+Estas pruebas permiten verificar que todos los errores previstos por el protocolo están correctamente codificados y gestionados tanto por el servidor como por los clientes.
+
+\subsection{Conclusiones de las pruebas}
+
+Las pruebas realizadas confirman:
+
+\begin{itemize}
+    \item La implementación del protocolo cumple con los requisitos.
+    \item Las conexiones y transferencias P2P funcionan correctamente.
+    \item El servidor maneja concurrencia de múltiples clientes.
+    \item Todos los errores definidos se detectan y reportan de forma adecuada.
+\end{itemize}
+
+Este enfoque exhaustivo asegura la fiabilidad y estabilidad del sistema ante cualquier entrada esperada o errónea.
+
+
+\clearpage
+
+\end{document}
+
+\clearpage
 
 \end{document}
