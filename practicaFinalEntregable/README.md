@@ -117,14 +117,17 @@ Este proyecto implementa un sistema **peer-to-peer** de intercambio de ficheros,
 ## Pruebas Automatizadas
 
 * **Parte 1**:
-  `./run_test.sh`
+  `./run_test_parte1.sh`
   valida registro, conexión, publicación, lista, GET\_FILE, borrado…
 
 * **Parte 2**:
-  `./run_test.sh` (adaptado)
+  `./run_test_parte2.sh` (adaptado)
   asegura que cada operación lleve timestamp y quede reflejada en `server.log`.
 
 * **Parte 3 (concurrencia + RPC)**:
+  
+  `./run_test_parte3.sh` (adaptado, un cliente)
+  
   `./run_concurrencia_test.sh`
   lanza dos clientes en paralelo y comprueba:
 
