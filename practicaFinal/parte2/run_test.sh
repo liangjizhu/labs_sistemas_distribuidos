@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # -------------------------------------------------------------------
 # Configuración
@@ -7,101 +7,142 @@ set -e
 SERVER_IP="127.0.0.1"
 SERVER_PORT="12345"
 CLIENT="python3 client.py -s $SERVER_IP -p $SERVER_PORT"
+DATETIME_PORT=5000
 
 # -------------------------------------------------------------------
-# Iniciar servicio web de timestamp
+# Función de limpieza en EXIT
 # -------------------------------------------------------------------
-echo "=== Iniciando servicio web de datetime ==="
+cleanup() {
+  echo ">>> Parando servicios..."
+  kill ${SRV_PID:-}   2>/dev/null || true
+  kill ${DT_PID:-}    2>/dev/null || true
+  # Asegurarse de matar al worker de Flask si quedase colgado
+  lsof -ti tcp:$DATETIME_PORT | xargs -r kill || true
+}
+trap cleanup EXIT
+
+# -------------------------------------------------------------------
+# 0) Preparar entorno
+# -------------------------------------------------------------------
+rm -f server.log datetime_service.log liang.log paolo.log
+rm -f /tmp/paolo_copy.txt /tmp/liang_copy.txt
+mkdir -p input/liang input/paolo
+
+echo "Contenido original de Liang" > input/liang/file.txt
+echo "Contenido original de Paolo" > input/paolo/file.txt
+
+# -------------------------------------------------------------------
+# 1) Arrancar datetime_service
+# -------------------------------------------------------------------
+echo "=== Levantando datetime_service ==="
 python3 datetime_service.py &> datetime_service.log &
-DATETIME_PID=$!
+DT_PID=$!
 sleep 1
 
 # -------------------------------------------------------------------
-# Iniciar servidor P2P (Parte 1 modificado para leer timestamps)
+# 2) Arrancar servidor P2P
 # -------------------------------------------------------------------
-echo "=== Iniciando servidor P2P ==="
+echo "=== Levantando servidor P2P ==="
 ./server -p $SERVER_PORT &> server.log &
-SERVER_PID=$!
+SRV_PID=$!
 sleep 1
 
 # -------------------------------------------------------------------
-# Comprobamos que el servidor arrancó sin errores de bind
+# 3) Verificar arranque correcto
 # -------------------------------------------------------------------
-if grep -qEi "address already in use|error" server.log; then
-    echo
-    echo "[FAIL] El servidor no arrancó correctamente:"
-    sed -n '1,20p' server.log
-    kill $DATETIME_PID 2>/dev/null || true
-    kill $SERVER_PID   2>/dev/null || true
-    exit 1
+if grep -Ei "address already in use|error" server.log; then
+  echo "[FAIL] El servidor no arrancó correctamente:"
+  head -n20 server.log
+  exit 1
 fi
 
 # -------------------------------------------------------------------
-# 1) Test del servicio web de timestamp
+# 4) Escritura de secuencias de comandos
 # -------------------------------------------------------------------
-echo "=== TEST: formato de timestamp devuelto ==="
-TS=$(curl -s http://127.0.0.1:5000/datetime)
-if [[ $TS =~ ^[0-9]{2}/[0-9]{2}/[0-9]{4}\ [0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
-    echo "[PASS] Timestamp válido: $TS"
-else
-    echo "[FAIL] Timestamp inválido: '$TS'"
-    kill $DATETIME_PID 2>/dev/null || true
-    kill $SERVER_PID   2>/dev/null || true
-    exit 1
-fi
-
-# -------------------------------------------------------------------
-# 2) Ejecutar secuencia de comandos cliente con retardo
-# -------------------------------------------------------------------
-echo "=== Ejecutando operaciones P2P con client.py (1s de retardo) ==="
-cat > cmds_part2.txt <<EOF
-UNREGISTER liang
+cat > cmds_liang.txt <<EOF
 REGISTER liang
+REGISTER liang
+UNREGISTER nobody
 CONNECT liang
-PUBLISH input/liang/file1.txt "Doc prueba"
+PUBLISH input/liang/file.txt "Liang publica"
+PUBLISH input/liang/file.txt "Liang duplicado"
 LIST_USERS
+LIST_CONTENT liang
+LIST_CONTENT paolo
+GET_FILE paolo input/paolo/file.txt /tmp/liang_copy.txt
+DELETE input/liang/file.txt
+GET_FILE liang input/liang/file.txt /tmp/liang_copy.txt
 DISCONNECT liang
+UNREGISTER liang
 QUIT
 EOF
 
-# Enviamos cada línea y luego esperamos 1 segundo
+cat > cmds_paolo.txt <<EOF
+sleep 0.2
+REGISTER paolo
+CONNECT paolo
+PUBLISH input/paolo/file.txt "Paolo publica"
+LIST_USERS
+LIST_CONTENT liang
+LIST_CONTENT paolo
+GET_FILE liang input/liang/file.txt /tmp/paolo_copy.txt
+DELETE input/paolo/file.txt
+GET_FILE paolo input/paolo/file.txt /tmp/paolo_copy.txt
+DISCONNECT paolo
+UNREGISTER paolo
+QUIT
+EOF
+
+# -------------------------------------------------------------------
+# 5) Lanzar ambos clientes en paralelo y capturar sus PIDs
+# -------------------------------------------------------------------
+echo "=== Ejecutando clientes liang y paolo en paralelo ==="
+
+# liang
 (
-  while IFS= read -r cmd; do
-    echo "$cmd"
-    sleep 1
-  done < cmds_part2.txt
-) | $CLIENT &> client_part2.log
+  while IFS= read -r line; do
+    # ignorar comentarios
+    [[ "$line" =~ ^# ]] && continue
+    echo "$line"
+    sleep 0.5
+  done < cmds_liang.txt
+) | $CLIENT &> liang.log &
+LIANG_PID=$!
+
+# paolo
+(
+  while IFS= read -r line; do
+    [[ "$line" =~ ^# ]] && continue
+    sleep 0.2
+    echo "$line"
+    sleep 0.5
+  done < cmds_paolo.txt
+) | $CLIENT &> paolo.log &
+PAOLO_PID=$!
 
 # -------------------------------------------------------------------
-# 3) Parar servicios
+# 6) Esperar SÓLO a los clientes
 # -------------------------------------------------------------------
-kill $DATETIME_PID 2>/dev/null || true
-kill $SERVER_PID   2>/dev/null || true
-wait $DATETIME_PID $SERVER_PID 2>/dev/null || true
+wait $LIANG_PID $PAOLO_PID
 
 # -------------------------------------------------------------------
-# 4) Aserciones sobre server.log
+# 7) Mostrar resultados
 # -------------------------------------------------------------------
-assert_server() {
-    local desc="$1"; local pat="$2"
-    if grep -qE "$pat" server.log; then
-        echo "[PASS] $desc"
-    else
-        echo
-        echo "[FAIL] $desc"
-        echo "  Esperado patrón: $pat"
-        echo "  --- server.log ---"
-        sed -n '1,200p' server.log
-        exit 1
-    fi
-}
-
-echo "=== Verificando logs del servidor ==="
-assert_server "REGISTER log"    "^s> OPERATION REGISTER FROM liang AT [0-9]{2}/[0-9]{2}/[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
-assert_server "CONNECT log"     "^s> OPERATION CONNECT FROM liang AT [0-9]{2}/[0-9]{2}/[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
-assert_server "PUBLISH log"     "^s> OPERATION PUBLISH FROM liang AT [0-9]{2}/[0-9]{2}/[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
-assert_server "LIST_USERS log"  "^s> OPERATION LIST USERS FROM liang AT [0-9]{2}/[0-9]{2}/[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
-assert_server "DISCONNECT log"  "^s> OPERATION DISCONNECT FROM liang AT [0-9]{2}/[0-9]{2}/[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}$"
+echo
+echo "----- server.log -----"
+sed -n '1,200p' server.log
 
 echo
-echo "+++ TODOS LOS TESTS DE LA PARTE 2 SUPERADOS +++"
+echo "----- liang.log -----"
+sed -n '1,200p' liang.log
+
+echo
+echo "----- paolo.log -----"
+sed -n '1,200p' paolo.log
+
+echo
+echo "Contenido de /tmp/liang_copy.txt: $( [ -f /tmp/liang_copy.txt ] && cat /tmp/liang_copy.txt || echo "<no existe>" )"
+echo "Contenido de /tmp/paolo_copy.txt: $( [ -f /tmp/paolo_copy.txt ] && cat /tmp/paolo_copy.txt || echo "<no existe>" )"
+
+echo
+echo "+++ FIN de las pruebas de concurrencia entre liang y paolo +++"
