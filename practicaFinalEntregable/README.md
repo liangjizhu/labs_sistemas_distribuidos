@@ -19,7 +19,7 @@ Este proyecto implementa un sistema **peer-to-peer** de intercambio de ficheros,
 - **Python 3** y pip:  
   ```bash
   pip install flask requests
-``
+  ```
 
 ---
 
@@ -127,7 +127,7 @@ Este proyecto implementa un sistema **peer-to-peer** de intercambio de ficheros,
 * **Parte 3 (concurrencia + RPC)**:
   
   `./run_test_parte3.sh` (adaptado, un cliente)
-  
+
   `./run_concurrencia_test.sh`
   lanza dos clientes en paralelo y comprueba:
 
