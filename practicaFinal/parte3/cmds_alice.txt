@@ -1,13 +1,27 @@
+UNREGISTER alice
+sleep 0.2
 REGISTER alice
-sleep 1
+sleep 0.2
+REGISTER alice       # duplicado
+sleep 0.2
+UNREGISTER nobody    # error
+sleep 0.2
 CONNECT alice
-sleep 1
-PUBLISH input/alice/msg.txt "primer mensaje"
-sleep 1
+sleep 0.5
+PUBLISH input/alice/msg.txt "A1"
+sleep 0.2
+PUBLISH input/alice/msg.txt "dup A1"
+sleep 0.2
 LIST_USERS
-sleep 1
+sleep 0.2
+LIST_CONTENT alice
+sleep 0.2
+# Alice sirve el fichero a Bob:
 GET_FILE bob input/bob/msg.txt /tmp/alice_copy.txt
-sleep 1
+sleep 3              # ESPERA para dar tiempo a Bob a descargar
+DELETE input/alice/msg.txt
+sleep 0.2
 DISCONNECT alice
-sleep 1
+sleep 0.2
+UNREGISTER alice
 QUIT

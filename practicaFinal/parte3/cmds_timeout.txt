@@ -1,0 +1,4 @@
+REGISTER slowpeer
+CONNECT slowpeer 60000
+GET_FILE slowpeer foo bar
+QUIT

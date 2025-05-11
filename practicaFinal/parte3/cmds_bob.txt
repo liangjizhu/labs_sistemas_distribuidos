@@ -1,14 +1,23 @@
 sleep 0.5
+UNREGISTER bob
+sleep 0.2
 REGISTER bob
-sleep 1
+sleep 0.2
 CONNECT bob
+sleep 0.5
+LIST_USERS
+sleep 0.2
+# primero falla, aún no ha publicado Alice
+GET_FILE alice input/alice/msg.txt /tmp/bob_try1.txt
 sleep 1
-PUBLISH input/bob/msg.txt "respuesta de bob"
-sleep 1
-LIST_CONTENT alice
-sleep 1
+# ahora sí, después de que Alice publique
 GET_FILE alice input/alice/msg.txt /tmp/bob_copy.txt
-sleep 1
+sleep 0.2
+DELETE input/bob/msg.txt
+sleep 0.2
+GET_FILE bob input/bob/msg.txt /tmp/bob_try2.txt      # error tras delete
+sleep 0.2
 DISCONNECT bob
-sleep 1
+sleep 0.2
+UNREGISTER bob
 QUIT
