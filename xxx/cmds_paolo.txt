@@ -1,0 +1,13 @@
+sleep 0.2
+REGISTER paolo
+CONNECT paolo
+PUBLISH input/paolo/file.txt "Paolo publica"
+LIST_USERS
+LIST_CONTENT liang
+LIST_CONTENT paolo
+GET_FILE liang input/liang/file.txt /tmp/paolo_copy.txt
+DELETE input/paolo/file.txt
+GET_FILE paolo input/paolo/file.txt /tmp/paolo_copy.txt
+DISCONNECT paolo
+UNREGISTER paolo
+QUIT

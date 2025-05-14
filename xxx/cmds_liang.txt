@@ -1,0 +1,15 @@
+REGISTER liang
+REGISTER liang
+UNREGISTER nobody
+CONNECT liang
+PUBLISH input/liang/file.txt "Liang publica"
+PUBLISH input/liang/file.txt "Liang duplicado"
+LIST_USERS
+LIST_CONTENT liang
+LIST_CONTENT paolo
+GET_FILE paolo input/paolo/file.txt /tmp/liang_copy.txt
+DELETE input/liang/file.txt
+GET_FILE liang input/liang/file.txt /tmp/liang_copy.txt
+DISCONNECT liang
+UNREGISTER liang
+QUIT
